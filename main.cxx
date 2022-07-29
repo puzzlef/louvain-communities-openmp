@@ -11,7 +11,7 @@ using namespace std;
 
 
 
-template <class G>
+template <bool O, class G>
 void runLouvain(const G& x, int repeat) {
   using K = typename G::key_type;
   using V = typename G::edge_value_type;
@@ -27,35 +27,35 @@ void runLouvain(const G& x, int repeat) {
   printf("[%01.6f modularity] noop\n", Q);
   // Run louvain sequential algorithm.
   do {
-    LouvainResult<K> a = louvainSeq<false>(x, {repeat, resolution, tolerance, passTolerance, toleranceDeclineFactor});
+    LouvainResult<K> a = louvainSeq<O>(x, {repeat, resolution, tolerance, passTolerance, toleranceDeclineFactor});
     auto fc = [&](auto u) { return a.membership[u]; };
     auto Q  = modularity(x, fc, M, 1.0f);
     printf("[%09.3f ms; %04d iterations; %03d passes; %01.6f modularity] louvainSeq\n", a.time, a.iterations, a.passes, Q);
   } while(0);
   for (int chunkSize=1; chunkSize<=65536; chunkSize*=2) {
     omp_set_schedule(omp_sched_static, chunkSize);
-    LouvainResult<K> a = louvainOmp<false>(x, {repeat, resolution, tolerance, passTolerance, toleranceDeclineFactor});
+    LouvainResult<K> a = louvainOmp<O>(x, {repeat, resolution, tolerance, passTolerance, toleranceDeclineFactor});
     auto fc = [&](auto u) { return a.membership[u]; };
     auto Q  = modularity(x, fc, M, 1.0f);
     printf("[%09.3f ms; %04d iterations; %03d passes; %01.6f modularity] louvainOmp {sch_kind: static, chunk_size: %d}\n", a.time, a.iterations, a.passes, Q, chunkSize);
   }
   for (int chunkSize=1; chunkSize<=65536; chunkSize*=2) {
     omp_set_schedule(omp_sched_dynamic, chunkSize);
-    LouvainResult<K> a = louvainOmp<false>(x, {repeat, resolution, tolerance, passTolerance, toleranceDeclineFactor});
+    LouvainResult<K> a = louvainOmp<O>(x, {repeat, resolution, tolerance, passTolerance, toleranceDeclineFactor});
     auto fc = [&](auto u) { return a.membership[u]; };
     auto Q  = modularity(x, fc, M, 1.0f);
     printf("[%09.3f ms; %04d iterations; %03d passes; %01.6f modularity] louvainOmp {sch_kind: dynamic, chunk_size: %d}\n", a.time, a.iterations, a.passes, Q, chunkSize);
   }
   for (int chunkSize=1; chunkSize<=65536; chunkSize*=2) {
     omp_set_schedule(omp_sched_guided, chunkSize);
-    LouvainResult<K> a = louvainOmp<false>(x, {repeat, resolution, tolerance, passTolerance, toleranceDeclineFactor});
+    LouvainResult<K> a = louvainOmp<O>(x, {repeat, resolution, tolerance, passTolerance, toleranceDeclineFactor});
     auto fc = [&](auto u) { return a.membership[u]; };
     auto Q  = modularity(x, fc, M, 1.0f);
     printf("[%09.3f ms; %04d iterations; %03d passes; %01.6f modularity] louvainOmp {sch_kind: guided, chunk_size: %d}\n", a.time, a.iterations, a.passes, Q, chunkSize);
   }
   for (int chunkSize=1; chunkSize<=65536; chunkSize*=2) {
     omp_set_schedule(omp_sched_auto, chunkSize);
-    LouvainResult<K> a = louvainOmp<false>(x, {repeat, resolution, tolerance, passTolerance, toleranceDeclineFactor});
+    LouvainResult<K> a = louvainOmp<O>(x, {repeat, resolution, tolerance, passTolerance, toleranceDeclineFactor});
     auto fc = [&](auto u) { return a.membership[u]; };
     auto Q  = modularity(x, fc, M, 1.0f);
     printf("[%09.3f ms; %04d iterations; %03d passes; %01.6f modularity] louvainOmp {sch_kind: auto, chunk_size: %d}\n", a.time, a.iterations, a.passes, Q, chunkSize);
@@ -74,7 +74,7 @@ int main(int argc, char **argv) {
   auto y  = symmetricize(x); print(y); printf(" (symmetricize)\n");
   auto fl = [](auto u) { return true; };
   // selfLoopU(y, w, fl); print(y); printf(" (selfLoopAllVertices)\n");
-  runLouvain(y, repeat);
+  runLouvain<true>(y, repeat);
   printf("\n");
   return 0;
 }
