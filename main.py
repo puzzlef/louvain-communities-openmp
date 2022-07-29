@@ -1,7 +1,7 @@
-# https://www.kaggle.com/wolfram77/puzzlef-louvain-static-approaches
+# https://www.kaggle.com/wolfram77/puzzlef-louvain-openmp-adjust-schedule
 import os
 from IPython.display import FileLink
-src="louvain-static-approaches"
+src="louvain-openmp-adjust-schedule"
 inp="/kaggle/input/graphs"
 out="{}.txt".format(src)
 !printf "" > "$out"
@@ -14,7 +14,7 @@ display(FileLink(out))
 !echo ""
 
 # Run
-!g++ -std=c++17 -O3 main.cxx
+!g++ -std=c++17 -O3 -fopenmp main.cxx
 !stdbuf --output=L ./a.out $inp/web-Stanford.mtx      2>&1 | tee -a "$out"
 !stdbuf --output=L ./a.out $inp/web-BerkStan.mtx      2>&1 | tee -a "$out"
 !stdbuf --output=L ./a.out $inp/web-Google.mtx        2>&1 | tee -a "$out"
