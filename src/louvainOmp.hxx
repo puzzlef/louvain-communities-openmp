@@ -2,6 +2,7 @@
 #include <utility>
 #include <vector>
 #include <iostream>
+#include <omp.h>
 #include "_main.hxx"
 #include "modularity.hxx"
 #include "accumulate.hxx"
@@ -159,20 +160,23 @@ void louvainChangeCommunity(vector<K>& vcom, vector<V>& ctot, const G& x, K u, K
  * @returns iterations
  */
 template <bool O, class G, class K, class V>
-int louvainMove(vector<K>& vdom, vector<K>& vcom, vector<V>& dtot, vector<V>& ctot, vector<K>& vcs, vector<V>& vcout, const G& x, const vector<V>& vtot, V M, V R, V E, int L) {
+int louvainMove(vector<K>& vdom, vector<K>& vcom, vector<V>& dtot, vector<V>& ctot, vector2d<K>& vcs, vector2d<V>& vcout, const G& x, const vector<V>& vtot, V M, V R, V E, int L) {
   K S = x.span(), l = 0; V Q = V();
   for (; l<L;) {
     V el = V();
     if (!O) copyValues(vcom, vdom);
     if (!O) copyValues(ctot, dtot);
-    x.forEachVertexKey([&](auto u) {
-      louvainClearScan(vcs, vcout);
-      louvainScanCommunities(vcs, vcout, x, u, vdom);
-      auto [c, e] = louvainChooseCommunity(x, u, vdom, vtot, dtot, vcs, vcout, M, R);
+    #pragma omp parallel for schedule(monotonic:runtime)
+    for (K u=0; u<S; u++) {
+      int t = omp_get_thread_num();
+      if (!x.hasVertex(u)) continue;
+      louvainClearScan(vcs[t], vcout[t]);
+      louvainScanCommunities(vcs[t], vcout[t], x, u, vdom);
+      auto [c, e] = louvainChooseCommunity(x, u, vdom, vtot, dtot, vcs[t], vcout[t], M, R);
       if (O) { if (c)              louvainChangeCommunity(vcom, ctot, x, u, c, vdom, vtot); }
       else   { if (c && c<vdom[u]) louvainChangeCommunity(vcom, ctot, x, u, c, vdom, vtot); }
       el += e;   // l1-norm
-    }); ++l;
+    } ++l;
     if (el<=E) break;
   }
   return l;
@@ -223,7 +227,7 @@ void louvainLookupCommunities(vector<K>& a, const vector<K>& vcom) {
 
 
 template <bool O, class G, class V=float>
-auto louvainSeq(const G& x, LouvainOptions<V> o={}) {
+auto louvainOmp(const G& x, LouvainOptions<V> o={}) {
   using K = typename G::key_type;
   V   R = o.resolution;
   V   E = o.tolerance;
@@ -232,8 +236,11 @@ auto louvainSeq(const G& x, LouvainOptions<V> o={}) {
   int P = o.maxPasses, p = 0;
   V   M = edgeWeight(x)/2;
   size_t S = x.span();
-  vector<K> vdom(S), vcom(S), vcs, a(S);
-  vector<V> vtot(S), dtot(S), ctot(S), vcout(S);
+  int    T = omp_get_max_threads();
+  vector<K> vdom(S), vcom(S), a(S);
+  vector<V> vtot(S), dtot(S), ctot(S);
+  vector2d<K> vcs(T);
+  vector2d<V> vcout(T, vector<V>(S));
   float t = measureDurationMarked([&](auto mark) {
     V Q0 = modularity(x, M, R);
     G y  = duplicate(x);

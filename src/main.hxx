@@ -14,4 +14,4 @@
 #include "properties.hxx"
 #include "modularity.hxx"
 #include "louvain.hxx"
-#include "louvainSeq.hxx"
+#include "louvainOmp.hxx"
