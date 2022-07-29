@@ -333,8 +333,8 @@ auto louvainOmp(const G& x, LouvainOptions<V> o={}) {
       louvainInitialize(vcom, ctot, y, vtot);
       copyValues(vcom, a);
       for (l=0, p=0; p<P;) {
-        if (O) l += louvainMove<O>(vcom, vcom, ctot, ctot, vcs, vcout, y, vtot, M, R, E, L);
-        else   l += louvainMove<O>(vdom, vcom, dtot, ctot, vcs, vcout, y, vtot, M, R, E, L);
+        if (O) l += louvainMoveOmp<O>(vcom, vcom, ctot, ctot, vcs, vcout, y, vtot, M, R, E, L);
+        else   l += louvainMoveOmp<O>(vdom, vcom, dtot, ctot, vcs, vcout, y, vtot, M, R, E, L);
         y = louvainAggregate(y, vcom); ++p;
         louvainLookupCommunities(a, vcom);
         V Q = modularity(y, M, R);

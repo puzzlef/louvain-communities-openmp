@@ -28,11 +28,12 @@ template <class K>
 struct LouvainResult {
   vector<K> membership;
   int   iterations;
+  int   passes;
   float time;
 
-  LouvainResult(vector<K>&& membership, int iterations=0, float time=0) :
-  membership(membership), iterations(iterations), time(time) {}
+  LouvainResult(vector<K>&& membership, int iterations=0, int passes=0, float time=0) :
+  membership(membership), iterations(iterations), passes(passes), time(time) {}
 
-  LouvainResult(vector<K>& membership, int iterations=0, float time=0) :
-  membership(move(membership)), iterations(iterations), time(time) {}
+  LouvainResult(vector<K>& membership, int iterations=0, int passes=0, float time=0) :
+  membership(move(membership)), iterations(iterations), passes(passes), time(time) {}
 };
