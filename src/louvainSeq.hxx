@@ -130,11 +130,12 @@ auto louvainChooseCommunity(const G& x, K u, const vector<K>& vcom, const vector
  * @param x original graph
  * @param u given vertex
  * @param c community to move to
+ * @param vdom community each vertex belonged to
  * @param vtot total edge weight of each vertex
  */
 template <class G, class K, class V>
-void louvainChangeCommunity(vector<K>& vcom, vector<V>& ctot, const G& x, K u, K c, const vector<V>& vtot) {
-  K d = vcom[u];
+void louvainChangeCommunity(vector<K>& vcom, vector<V>& ctot, const G& x, K u, K c, const vector<K>& vdom, const vector<V>& vtot) {
+  K d = vdom[u];
   ctot[d] -= vtot[u];
   ctot[c] += vtot[u];
   vcom[u] = c;
@@ -143,7 +144,9 @@ void louvainChangeCommunity(vector<K>& vcom, vector<V>& ctot, const G& x, K u, K
 
 /**
  * Louvain algorithm's local moving phase.
+ * @param vdom community each vertex belonged to (zeros)
  * @param vcom community each vertex belongs to (initial)
+ * @param dtot previous total edge weight of each community (zeros)
  * @param ctot total edge weight of each community (precalculated)
  * @param vcs communities vertex u is linked to (temporary buffer)
  * @param vcout total edge weight from vertex u to community C (temporary buffer)
@@ -155,16 +158,19 @@ void louvainChangeCommunity(vector<K>& vcom, vector<V>& ctot, const G& x, K u, K
  * @param L max iterations (500)
  * @returns iterations
  */
-template <class G, class K, class V>
-int louvainMove(vector<K>& vcom, vector<V>& ctot, vector<K>& vcs, vector<V>& vcout, const G& x, const vector<V>& vtot, V M, V R, V E, int L) {
+template <bool O, class G, class K, class V>
+int louvainMove(vector<K>& vdom, vector<K>& vcom, vector<V>& dtot, vector<V>& ctot, vector<K>& vcs, vector<V>& vcout, const G& x, const vector<V>& vtot, V M, V R, V E, int L) {
   K S = x.span(), l = 0; V Q = V();
   for (; l<L;) {
     V el = V();
+    if (!O) copyValues(vcom, vdom);
+    if (!O) copyValues(ctot, dtot);
     x.forEachVertexKey([&](auto u) {
       louvainClearScan(vcs, vcout);
-      louvainScanCommunities(vcs, vcout, x, u, vcom);
-      auto [c, e] = louvainChooseCommunity(x, u, vcom, vtot, ctot, vcs, vcout, M, R);
-      if (c)        louvainChangeCommunity(vcom, ctot, x, u, c, vtot);
+      louvainScanCommunities(vcs, vcout, x, u, vdom);
+      auto [c, e] = louvainChooseCommunity(x, u, vdom, vtot, dtot, vcs, vcout, M, R);
+      if (O) { if (c)              louvainChangeCommunity(vcom, ctot, x, u, c, vdom, vtot); }
+      else   { if (c && c<vdom[u]) louvainChangeCommunity(vcom, ctot, x, u, c, vdom, vtot); }
       el += e;   // l1-norm
     }); ++l;
     if (el<=E) break;
@@ -216,42 +222,44 @@ void louvainLookupCommunities(vector<K>& a, const vector<K>& vcom) {
 }
 
 
-template <class G, class V=float>
+template <bool O, class G, class V=float>
 auto louvainSeq(const G& x, LouvainOptions<V> o={}) {
   using K = typename G::key_type;
   V   R = o.resolution;
   V   E = o.tolerance;
-  V   D = o.phaseTolerance;
-  int L = o.maxIterations;
-  int P = o.maxPhaseIterations, p = 0;
+  V   D = o.passTolerance;
+  int L = o.maxIterations,      l = 0;
+  int P = o.maxPasses, p = 0;
   V   M = edgeWeight(x)/2;
-  V  Q0 = modularity(x, M, R);
   size_t S = x.span();
-  vector<K> vcom(S), vcs;
-  vector<V> vtot(S), ctot(S), vcout(S);
-  G y = duplicate(x);
-  louvainVertexWeights(vtot, y);
-  louvainInitialize(vcom, ctot, y, vtot);
-  vector<K> a(S); copyValues(vcom, a);
-  // printf("louvainSeq: "); println(y);
-  // printf("louvainSeq: M0 = %f\n", M);
-  // printf("louvainSeq: Q0 = %f\n", Q0);
-  for (; p<P;) {
-    louvainMove(vcom, ctot, vcs, vcout, y, vtot, M, R, E, L);
-    y = louvainAggregate(y, vcom); ++p;
-    louvainLookupCommunities(a, vcom);
-    // printf("louvainSeq: y: "); println(y);
-    V Q = modularity(y, M, R);
-    // printf("louvainSeq: p=%d, Q=%f\n", p, Q);
-    V M = edgeWeight(y)/2;
-    // printf("louvainSeq: p=%d, M=%f\n", p, M);
-    if (Q-Q0<=D) break;
+  vector<K> vdom(S), vcom(S), vcs, a(S);
+  vector<V> vtot(S), dtot(S), ctot(S), vcout(S);
+  float t = measureDurationMarked([&](auto mark) {
+    V Q0 = modularity(x, M, R);
+    G y  = duplicate(x);
     fillValueU(vcom, K());
     fillValueU(vtot, V());
     fillValueU(ctot, V());
-    louvainVertexWeights(vtot, y);
-    louvainInitialize(vcom, ctot, y, vtot);
-    Q0 = Q;
-  }
-  return LouvainResult<K>(a, p, 0.0f);
+    mark([&]() {
+      louvainVertexWeights(vtot, y);
+      louvainInitialize(vcom, ctot, y, vtot);
+      copyValues(vcom, a);
+      for (l=0, p=0; p<P;) {
+        if (O) l += louvainMove<O>(vcom, vcom, ctot, ctot, vcs, vcout, y, vtot, M, R, E, L);
+        else   l += louvainMove<O>(vdom, vcom, dtot, ctot, vcs, vcout, y, vtot, M, R, E, L);
+        y = louvainAggregate(y, vcom); ++p;
+        louvainLookupCommunities(a, vcom);
+        V Q = modularity(y, M, R);
+        V M = edgeWeight(y)/2;
+        if (Q-Q0<=D) break;
+        fillValueU(vcom, K());
+        fillValueU(vtot, V());
+        fillValueU(ctot, V());
+        louvainVertexWeights(vtot, y);
+        louvainInitialize(vcom, ctot, y, vtot);
+        Q0 = Q;
+      }
+    });
+  }, o.repeat);
+  return LouvainResult<K>(a, l, p, t);
 }
