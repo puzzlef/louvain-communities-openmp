@@ -74,7 +74,7 @@ int main(int argc, char **argv) {
   auto y  = symmetricize(x); print(y); printf(" (symmetricize)\n");
   auto fl = [](auto u) { return true; };
   // selfLoopU(y, w, fl); print(y); printf(" (selfLoopAllVertices)\n");
-  runLouvain<true>(y, repeat);
+  runLouvain<false>(y, repeat);
   printf("\n");
   return 0;
 }

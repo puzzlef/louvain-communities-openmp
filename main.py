@@ -1,7 +1,7 @@
-# https://www.kaggle.com/wolfram77/puzzlef-louvain-openmp-adjust-schedule
+# https://www.kaggle.com/wolfram77/puzzlef-louvain-unordered-openmp-adjust-schedule
 import os
 from IPython.display import FileLink
-src="louvain-openmp-adjust-schedule"
+src="louvain-unordered-openmp-adjust-schedule"
 inp="/kaggle/input/graphs"
 out="{}.txt".format(src)
 !printf "" > "$out"
