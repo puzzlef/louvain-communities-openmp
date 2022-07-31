@@ -1,0 +1,10 @@
+cff-version: 1.2.0
+message: "If you use this software, please cite it as below."
+authors:
+  - family-names: Sahu
+    given-names: Subhajit
+    orcid: https://orcid.org/0000-0001-5140-6578
+title: "puzzlef/louvain-openmp-adjust-schedule: Effect of adjusting schedule in OpenMP-based Louvain algorithm for community detection"
+version: 1.0.0
+doi: 10.5281/zenodo.6945749
+date-released: 2022-07-31
