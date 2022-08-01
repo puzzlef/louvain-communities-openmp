@@ -203,7 +203,7 @@ int louvainMoveOmp(vector<K>& vdom, vector<K>& vcom, vector<V>& dtot, vector<V>&
     V el = V();
     if (!O) copyValues(vcom, vdom);
     if (!O) copyValues(ctot, dtot);
-    #pragma omp parallel for schedule(monotonic:runtime)
+    #pragma omp parallel for reduction(+:el) schedule(monotonic:runtime)
     for (K u=0; u<S; u++) {
       int t = omp_get_thread_num();
       if (!x.hasVertex(u)) continue;
