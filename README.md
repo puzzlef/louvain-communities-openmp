@@ -1,6 +1,8 @@
 Comparing static vs dynamic approaches of OpenMP-based [Louvain algorithm]
 for [community detection].
 
+`TODO`
+
 [Louvain] is an algorithm for **detecting communities in graphs**. *Community*
 *detection* helps us understand the *natural divisions in a network* in an
 **unsupervised manner**. It is used in **e-commerce** for *customer*

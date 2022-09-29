@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-src="louvain-openmp-static-vs-dynamic"
+src="louvain-openmp-adjust-threads"
 out="/home/resources/Documents/subhajit/$src.log"
 ulimit -s unlimited
 printf "" > "$out"
