@@ -4,9 +4,8 @@ const path = require('path');
 
 const RGRAPH = /^Loading graph .*\/(.*?)\.mtx \.\.\./m;
 const RORDER = /^order: (\d+) size: (\d+) (?:\[\w+\] )?\{\} \(symmetricize\)/m;
-const ROMPTH = /^OMP_NUM_THREADS=(\d+)/m;
 const RORGNL = /^\[(\S+?) modularity\] noop/;
-const RRESLT = /^\[(\S+?) batch_size; (\S+?) ms; (\d+) iters\.; (\d+) passes; (\S+?) modularity\] (\w+)/m;
+const RRESLT = /^\[(\S+?) ms; (\d+) iters\.; (\d+) passes; (\S+?) modularity\] (\w+)(?:\s+\{threads=(\d+)\})?/m;
 
 
 
@@ -55,30 +54,26 @@ function readLogLine(ln, data, state) {
     state.order = parseFloat(order);
     state.size  = parseFloat(size);
   }
-  else if (ROMPTH.test(ln)) {
-    var [, omp_num_threads] = ROMPTH.exec(ln);
-    state.omp_num_threads   = parseFloat(omp_num_threads);
-  }
   else if (RORGNL.test(ln)) {
     var [, modularity] = RORGNL.exec(ln);
     data.get(state.graph).push(Object.assign({}, state, {
-      batch_size:  0,
-      time:        0,
-      iterations:  0,
-      passes:      0,
-      modularity:  parseFloat(modularity),
-      technique:   'noop',
+      time:       0,
+      iterations: 0,
+      passes:     0,
+      modularity: parseFloat(modularity),
+      technique:  'noop',
+      threads:    0,
     }));
   }
   else if (RRESLT.test(ln)) {
-    var [, batch_size, time, iterations, passes, modularity, technique] = RRESLT.exec(ln);
+    var [, time, iterations, passes, modularity, technique, threads] = RRESLT.exec(ln);
     data.get(state.graph).push(Object.assign({}, state, {
-      batch_size:  parseFloat(batch_size),
-      time:        parseFloat(time),
-      iterations:  parseFloat(iterations),
-      passes:      parseFloat(passes),
-      modularity:  parseFloat(modularity),
+      time:       parseFloat(time),
+      iterations: parseFloat(iterations),
+      passes:     parseFloat(passes),
+      modularity: parseFloat(modularity),
       technique,
+      threads:    parseFloat(threads || '0'),
     }));
   }
   return state;
