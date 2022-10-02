@@ -1,7 +1,5 @@
-Comparing static vs dynamic approaches of OpenMP-based [Louvain algorithm]
-for [community detection].
-
-`TODO`
+Effect of adjusting threads with OpenMP-based [Louvain algorithm] for
+[community detection].
 
 [Louvain] is an algorithm for **detecting communities in graphs**. *Community*
 *detection* helps us understand the *natural divisions in a network* in an
@@ -40,72 +38,32 @@ modularity is below a certain threshold. As a result from each pass, we have a
 generally consider the *top-level hierarchy* as the *final result* of community
 detection process.
 
-*Louvain* algorithm is a hierarchical algorithm, and thus has two different
-tolerance parameters: `tolerance` and `passTolerance`. **tolerance** defines the
-minimum amount of increase in modularity expected, until the local-moving phase
-of the algorithm is considered to have converged. We compare the increase in
-modularity in each iteration of the local-moving phase to see if it is below
-`tolerance`. **passTolerance** defines the minimum amount of increase in
-modularity expected, until the entire algorithm is considered to have converged.
-We compare the increase in modularity across all iterations of the local-moving
-phase in the current pass to see if it is below `passTolerance`. `passTolerance`
-is normally set to `0` (we want to maximize our modularity gain), but the same
-thing does not apply for `tolerance`. Adjusting values of `tolerance` between
-each pass have been observed to impact the runtime of the algorithm, without
-significantly affecting the modularity of obtained communities. In this
-experiment, we compare the performance of *three different types* of OpenMP-based
-**dynamic Louvain** with respect to the *static* version. We also compare with
-sequential static approach.
-
-**Naive dynamic**:
-- We start with previous community membership of each vertex (instead of each vertex its own community).
-
-**Delta screening**:
-- All edge batches are undirected, and sorted by source vertex-id.
-- For edge additions across communities with source vertex `i` and highest modularity changing edge vertex `j*`,
-  `i`'s neighbors and `j*`'s community is marked as affected.
-- For edge deletions within the same community `i` and `j`,
-  `i`'s neighbors and `j`'s community is marked as affected.
-
-**Frontier-based**:
-- All source and destination vertices are marked as affected for insertions and deletions.
-- For edge additions across communities with source vertex `i` and destination vertex `j`,
-  `i` is marked as affected.
-- For edge deletions within the same community `i` and `j`,
-  `i` is marked as affected.
-- Vertices whose communities change in local-moving phase have their neighbors marked as affected.
-
-First, we compute the community membership of each vertex using the static
-Louvain algorithm. We then generate *batches* of *insertions (+)* and
-*deletions (-)* of edges of sizes 500, 1000, 5000, ... 100000. For each batch
-size, we generate *five* different batches for the purpose of *averaging*. Each
-batch of edges (insertion / deletion) is generated randomly such that the
-selection of each vertex (as endpoint) is *equally probable*. We choose the
-Louvain *parameters* as `resolution = 1.0`, `tolerance = 1e-2` (for local-moving
-phase) with *tolerance* decreasing after every pass by a factor of
-`toleranceDeclineFactor = 10`, and a `passTolerance = 0.0` (when passes stop).
-In addition we limit the maximum number of iterations in a single local-moving
-phase with `maxIterations = 500`, and limit the maximum number of passes with
-`maxPasses = 500`. We run the Louvain algorithm until convergence (or until the
-maximum limits are exceeded), and measure the **time taken** for the
-*computation* (performed 5 times for averaging), the **modularity score**, the
-**total number of iterations** (in the *local-moving phase*), and the number
+In this experiment, we perform OpenMP-based Louvain algorithm with the number of
+threads varying from `2` to `48` in steps of `2` (the system has 2 CPUs with 12
+cores each and 2 hyper-threads per core). Each thread uses its own accumulation
+hashtable in order to find the most suitable community to join to, for each
+vertex. Once the best community is found, the community membership of that
+vertex is updated, along with the total weight of each community. This update
+can affect the community moving decision of other vertices (ordered approach).
+We choose the Louvain *parameters* as `resolution = 1.0`, `tolerance = 1e-2`
+(for local-moving phase) with *tolerance* decreasing after every pass by a
+factor of `toleranceDeclineFactor = 10`, and a `passTolerance = 0.0` (when
+passes stop). In addition we limit the maximum number of iterations in a single
+local-moving phase with `maxIterations = 500`, and limit the maximum number of
+passes with `maxPasses = 500`. We run the Louvain algorithm until convergence
+(or until the maximum limits are exceeded), and measure the **time taken** for
+the *computation* (performed 5 times for averaging), the **modularity score**,
+the **total number of iterations** (in the *local-moving phase*), and the number
 of **passes**. This is repeated for *seventeen* different graphs.
 
-From the results, we make make the following observations. The frontier-based
-dynamic approach converges the fastest, which obtaining communities with only
-slightly lower modularity than other approaches. We also observe that
-delta-screening based dynamic Louvain algorithm has the same performance as that
-of the naive dynamic approach. Therefore, **frontier-based dynamic Louvain**
-would be the **best choice**. However, one of the most interesting things we
-note is that sequential static approach is only slightly slower than
-OpenMP-based approach with 12 threads. This is indeed suprising, and is likely
-due to higher pressure on cache coherence system as well as the algorithm
-becoming closes to an unordered approach, which is inherently slower than an
-ordered approach. Trying to avoid community swaps with OpenMP-based approach
-does not seem to improve performance by any significant amount. However, it is
-possible that if unordered approach is used with OpenMP, then its performance
-may be a bit better.
+From the results, we make make the following observations. **Increasing the number**
+of threads **only decreases the runtime** of the Louvain algorithm **by a small**
+**amount**. Utilizing all 48 threads for community detection significantly increases
+the time required for obtaining the results. The number of iterations required
+to converge also increases with the number of threads, indicating that the
+behaviour of OpenMP-based Louvain algorithm starts to approach the unordered
+variant of the algorithm, which converges mush more slowly than the ordered
+variant.
 
 All outputs are saved in a [gist] and a small part of the output is listed here.
 Some [charts] are also included below, generated from [sheets]. The input data
@@ -128,50 +86,34 @@ $ ...
 # Loading graph /home/subhajit/data/web-Stanford.mtx ...
 # order: 281903 size: 2312497 [directed] {}
 # order: 281903 size: 3985272 [directed] {} (symmetricize)
-# OMP_NUM_THREADS=12
 # [-0.000497 modularity] noop
-# [0e+00 batch_size; 00440.006 ms; 0025 iters.; 009 passes; 0.923382580 modularity] louvainSeqStatic
-# [5e+02 batch_size; 00394.563 ms; 0027 iters.; 009 passes; 0.923351705 modularity] louvainSeqStatic
-# [5e+02 batch_size; 00278.041 ms; 0030 iters.; 009 passes; 0.927210510 modularity] louvainOmpStatic
-# [5e+02 batch_size; 00101.633 ms; 0003 iters.; 003 passes; 0.914556682 modularity] louvainOmpNaiveDynamic
-# [5e+02 batch_size; 00107.587 ms; 0004 iters.; 004 passes; 0.914944172 modularity] louvainOmpDynamicDeltaScreening
-# [5e+02 batch_size; 00088.939 ms; 0003 iters.; 003 passes; 0.913411736 modularity] louvainOmpDynamicFrontier
+# [00448.766 ms; 0025 iters.; 009 passes; 0.923382580 modularity] louvainSeq
+# [00523.509 ms; 0025 iters.; 009 passes; 0.923540175 modularity] louvainOmp {threads=02}
+# [00424.414 ms; 0025 iters.; 009 passes; 0.923708200 modularity] louvainOmp {threads=04}
+# [00410.485 ms; 0026 iters.; 009 passes; 0.923715591 modularity] louvainOmp {threads=06}
+# [00422.342 ms; 0034 iters.; 009 passes; 0.923617899 modularity] louvainOmp {threads=08}
 # ...
-# [1e+05 batch_size; 00552.708 ms; 0019 iters.; 006 passes; 0.925986648 modularity] louvainSeqStatic
-# [1e+05 batch_size; 00321.840 ms; 0026 iters.; 005 passes; 0.925740898 modularity] louvainOmpStatic
-# [1e+05 batch_size; 00130.201 ms; 0010 iters.; 004 passes; 0.912258267 modularity] louvainOmpNaiveDynamic
-# [1e+05 batch_size; 00115.326 ms; 0002 iters.; 002 passes; 0.912238598 modularity] louvainOmpDynamicDeltaScreening
-# [1e+05 batch_size; 00117.582 ms; 0010 iters.; 004 passes; 0.911141872 modularity] louvainOmpDynamicFrontier
-# [-5e+02 batch_size; 00389.191 ms; 0024 iters.; 008 passes; 0.923092246 modularity] louvainSeqStatic
-# [-5e+02 batch_size; 00286.037 ms; 0026 iters.; 008 passes; 0.926223278 modularity] louvainOmpStatic
-# [-5e+02 batch_size; 00106.936 ms; 0004 iters.; 004 passes; 0.914734781 modularity] louvainOmpNaiveDynamic
-# [-5e+02 batch_size; 00110.743 ms; 0004 iters.; 004 passes; 0.914734781 modularity] louvainOmpDynamicDeltaScreening
-# [-5e+02 batch_size; 00073.786 ms; 0002 iters.; 002 passes; 0.913197339 modularity] louvainOmpDynamicFrontier
-# ...
-# [-1e+05 batch_size; 00471.004 ms; 0018 iters.; 006 passes; 0.881129861 modularity] louvainSeqStatic
-# [-1e+05 batch_size; 00387.020 ms; 0017 iters.; 006 passes; 0.877473772 modularity] louvainOmpStatic
-# [-1e+05 batch_size; 00115.070 ms; 0004 iters.; 004 passes; 0.869384587 modularity] louvainOmpNaiveDynamic
-# [-1e+05 batch_size; 00106.264 ms; 0004 iters.; 004 passes; 0.869384587 modularity] louvainOmpDynamicDeltaScreening
-# [-1e+05 batch_size; 00099.210 ms; 0004 iters.; 004 passes; 0.868384838 modularity] louvainOmpDynamicFrontier
+# [00265.765 ms; 0038 iters.; 009 passes; 0.927356064 modularity] louvainOmp {threads=42}
+# [00252.321 ms; 0040 iters.; 009 passes; 0.927225232 modularity] louvainOmp {threads=44}
+# [00253.382 ms; 0074 iters.; 009 passes; 0.927367568 modularity] louvainOmp {threads=46}
+# [00276.118 ms; 0032 iters.; 009 passes; 0.927250326 modularity] louvainOmp {threads=48}
 #
 # Loading graph /home/subhajit/data/web-BerkStan.mtx ...
 # order: 685230 size: 7600595 [directed] {}
 # order: 685230 size: 13298940 [directed] {} (symmetricize)
-# OMP_NUM_THREADS=12
 # [-0.000316 modularity] noop
-# [0e+00 batch_size; 00735.782 ms; 0028 iters.; 009 passes; 0.935839474 modularity] louvainSeqStatic
-# [5e+02 batch_size; 00741.732 ms; 0027 iters.; 009 passes; 0.937690854 modularity] louvainSeqStatic
-# [5e+02 batch_size; 00655.410 ms; 0028 iters.; 009 passes; 0.935854971 modularity] louvainOmpStatic
-# [5e+02 batch_size; 00216.361 ms; 0003 iters.; 003 passes; 0.932617486 modularity] louvainOmpNaiveDynamic
-# [5e+02 batch_size; 00246.924 ms; 0003 iters.; 003 passes; 0.932617486 modularity] louvainOmpDynamicDeltaScreening
-# [5e+02 batch_size; 00186.971 ms; 0004 iters.; 004 passes; 0.932644546 modularity] louvainOmpDynamicFrontier
+# [00743.776 ms; 0028 iters.; 009 passes; 0.935839474 modularity] louvainSeq
+# [00964.372 ms; 0028 iters.; 009 passes; 0.935696840 modularity] louvainOmp {threads=02}
+# [00798.594 ms; 0029 iters.; 009 passes; 0.935616016 modularity] louvainOmp {threads=04}
+# [01217.822 ms; 0029 iters.; 009 passes; 0.935623407 modularity] louvainOmp {threads=06}
+# [00981.672 ms; 0029 iters.; 009 passes; 0.934371948 modularity] louvainOmp {threads=08}
 # ...
 ```
 
-[![](https://i.imgur.com/p8ZCnh3.png)][sheetp]
-[![](https://i.imgur.com/Egy7d0k.png)][sheetp]
-[![](https://i.imgur.com/sgqDzGG.png)][sheetp]
-[![](https://i.imgur.com/KXMkFpV.png)][sheetp]
+[![](https://i.imgur.com/SxNaJki.png)][sheetp]
+[![](https://i.imgur.com/jhmxA9c.png)][sheetp]
+[![](https://i.imgur.com/Ys0tife.png)][sheetp]
+[![](https://i.imgur.com/MqAypz2.png)][sheetp]
 
 <br>
 <br>
@@ -191,14 +133,13 @@ $ ...
 
 [![](https://i.imgur.com/UGB0g2L.jpg)](https://www.youtube.com/watch?v=pIF3wOet-zw)<br>
 [![ORG](https://img.shields.io/badge/org-puzzlef-green?logo=Org)](https://puzzlef.github.io)
-[![DOI](https://zenodo.org/badge/540003159.svg)](https://zenodo.org/badge/latestdoi/540003159)
 
 
 [Prof. Dip Sankar Banerjee]: https://sites.google.com/site/dipsankarban/
 [Prof. Kishore Kothapalli]: https://faculty.iiit.ac.in/~kkishore/
 [SuiteSparse Matrix Collection]: https://sparse.tamu.edu
 [Louvain]: https://en.wikipedia.org/wiki/Louvain_method
-[gist]: https://gist.github.com/wolfram77/3f9d0452901d3719d0e0baf345615c91
-[charts]: https://imgur.com/a/igL8c2j
-[sheets]: https://docs.google.com/spreadsheets/d/13GMWmhcw5EbCVgVVtP08yQQrpQmE_EIyhNGb0MzEPX8/edit?usp=sharing
-[sheetp]: https://docs.google.com/spreadsheets/d/e/2PACX-1vR_oG_LC7Nuy3B8dlM1SUM4UeCpB946foX7cvBxeYs8YZHS0h76thPjQU5kI_shiSvD7FjbppNT4-G1/pubhtml
+[gist]: https://gist.github.com/wolfram77/52e3228bf8aaf0342681cc821eb1e13d
+[charts]: https://imgur.com/a/0Urw7Tj
+[sheets]: https://docs.google.com/spreadsheets/d/1Ghp4B9I121mjWtAES9jK6C3WoBJQ2b3l6xeLsr5HMh0/edit?usp=sharing
+[sheetp]: https://docs.google.com/spreadsheets/d/e/2PACX-1vR7szglMFn_31IVDz5LrlcUg_9TgvIhtJAW-XgLdbRcM9mXPUE3IdEr8rSd-DbsPTMYIQ_i5iNint7D/pubhtml
