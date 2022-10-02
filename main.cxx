@@ -45,11 +45,11 @@ void runLouvain(const G& x, int repeat) {
 
   // Get community memberships (static).
   LouvainResult<K> a0 = louvainSeqStatic(x, init, o);
-  printf("[%1.0e batch_size; %09.3f ms; %04d iters.; %03d passes; %01.9f modularity] louvainSeq\n", double(batchSize), a0.time, a0.iterations, a0.passes, getModularity(x, a0, M));
+  printf("[%09.3f ms; %04d iters.; %03d passes; %01.9f modularity] louvainSeq\n", a0.time, a0.iterations, a0.passes, getModularity(x, a0, M));
   for (int threads=2; threads<=MAX_THREADS; threads+=2) {
     omp_set_num_threads(threads);
     LouvainResult<K> a1 = louvainOmpStatic(x, init, o);
-    printf("[%1.0e batch_size; %09.3f ms; %04d iters.; %03d passes; %01.9f modularity] louvainOmp {threads=%02d}\n", double(batchSize), a1.time, a1.iterations, a1.passes, getModularity(x, a1, M), threads);
+    printf("[%09.3f ms; %04d iters.; %03d passes; %01.9f modularity] louvainOmp {threads=%02d}\n", a1.time, a1.iterations, a1.passes, getModularity(x, a1, M), threads);
   }
 }
 
