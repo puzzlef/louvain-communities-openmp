@@ -1,5 +1,4 @@
-Effect of adjusting schedule in OpenMP-based Louvain algorithm for community
-detection.
+Comparing approaches for *community detection* using *OpenMP-based* **Louvain algorithm**.
 
 [Louvain] is an algorithm for **detecting communities in graphs**. *Community*
 *detection* helps us understand the *natural divisions in a network* in an
@@ -38,6 +37,15 @@ modularity is below a certain threshold. As a result from each pass, we have a
 generally consider the *top-level hierarchy* as the *final result* of community
 detection process.
 
+The input data used for the experiments given below is available from the
+[SuiteSparse Matrix Collection]. These experiments are performed with guidance
+from [Prof. Kishore Kothapalli] and [Prof. Dip Sankar Banerjee].
+
+<br>
+
+
+### Adjusting OpenMP schedule (Ordered approach)
+
 There exist two possible approaches of vertex processing with the Louvain
 algorithm: *ordered* and *unordered*. With the **ordered approach** (original
 paper's approach), the *local-moving phase* is **performed sequentially** upon
@@ -52,20 +60,21 @@ with associated community information), and is the approach **followed by**
 interested in looking at *performance/modularity penalty* (if any) associated
 with the *unordered approach*.
 
-In this experiment we attempt performing the **OpenMP-based Louvain algorithm**
-using the **ordered approach** with all different **schedule kinds** (`static`,
-`dynamic`, `guided`, and `auto`), which adjusting the **chunk size** from `1` to
-`65536` in multiples of 2. In all cases, we use a total of `12 threads`. We
-choose the Louvain *parameters* as `resolution = 1.0`, `tolerance = 1e-2` (for
-local-moving phase) with *tolerance* decreasing after every pass by a factor of
-`toleranceDeclineFactor = 10`, and a `passTolerance = 0.0` (when passes stop).
-In addition we limit the maximum number of iterations in a single local-moving
-phase with `maxIterations = 500`, and limit the maximum number of passes with
-`maxPasses = 500`. We run the Louvain algorithm until convergence (or until the
-maximum limits are exceeded), and measure the **time** **taken** for the
-*computation* (performed 5 times for averaging), the **modularity score**, the
-**total number of iterations** (in the *local-moving* *phase*), and the number
-of **passes**. This is repeated for *seventeen* different graphs.
+In this experiment ([adjust-schedule]), we attempt performing the **OpenMP-based**
+**Louvain algorithm** using the **ordered approach** with all different **schedule**
+**kinds** (`static`, `dynamic`, `guided`, and `auto`), which adjusting the **chunk**
+**size** from `1` to `65536` in multiples of 2. In all cases, we use a total of
+`12 threads`. We choose the Louvain *parameters* as `resolution = 1.0`,
+`tolerance = 1e-2` (for local-moving phase) with *tolerance* decreasing after
+every pass by a factor of `toleranceDeclineFactor = 10`, and a `passTolerance = 0.0`
+(when passes stop). In addition we limit the maximum number of iterations
+in a single local-moving phase with `maxIterations = 500`, and limit the maximum
+number of passes with `maxPasses = 500`. We run the Louvain algorithm until
+convergence (or until the maximum limits are exceeded), and measure the **time**
+**taken** for the *computation* (performed 5 times for averaging), the
+**modularity score**, the **total number of iterations** (in the *local-moving*
+*phase*), and the number of **passes**. This is repeated for *seventeen*
+different graphs.
 
 From the results, we observe that little to **no benefit** is provided with a
 multi-threaded **OpenMP-based ordered** *Louvain algorithm*, compared to the
@@ -84,50 +93,49 @@ parallelizable). **Partially ordered approaches** for vertex processing may also
 be explored. *Vertex ordering* via *graph coloring* has been explored by
 Halappanavar et al.
 
-All outputs are saved in a [gist] and a small part of the output is listed here.
-Some [charts] are also included below, generated from [sheets]. The input data
-used for this experiment is available from the [SuiteSparse Matrix Collection].
-This experiment was done with guidance from [Prof. Kishore Kothapalli] and
-[Prof. Dip Sankar Banerjee].
+[adjust-schedule]: https://github.com/puzzlef/louvain-communities-openmp/tree/adjust-schedule
 
 <br>
 
-```bash
-$ g++ -std=c++17 -O3 main.cxx
-$ ./a.out ~/data/web-Stanford.mtx
-$ ./a.out ~/data/web-BerkStan.mtx
-$ ...
 
-# Loading graph /home/subhajit/data/web-Stanford.mtx ...
-# order: 281903 size: 2312497 [directed] {}
-# order: 281903 size: 3985272 [directed] {} (symmetricize)
-# OMP_NUM_THREADS=12
-# [-0.000497 modularity] noop
-# [00636.194 ms; 0025 iterations; 009 passes; 0.923383 modularity] louvainSeq
-# [00698.879 ms; 0026 iterations; 009 passes; 0.923119 modularity] louvainOmp {sch_kind: static, chunk_size: 1}
-# [00655.290 ms; 0025 iterations; 009 passes; 0.922996 modularity] louvainOmp {sch_kind: static, chunk_size: 2}
-# [00661.412 ms; 0026 iterations; 009 passes; 0.923447 modularity] louvainOmp {sch_kind: static, chunk_size: 4}
-# ...
-# [00617.610 ms; 0025 iterations; 009 passes; 0.927243 modularity] louvainOmp {sch_kind: auto, chunk_size: 16384}
-# [00620.235 ms; 0025 iterations; 009 passes; 0.923699 modularity] louvainOmp {sch_kind: auto, chunk_size: 32768}
-# [00614.724 ms; 0023 iterations; 009 passes; 0.923273 modularity] louvainOmp {sch_kind: auto, chunk_size: 65536}
-#
-# Loading graph /home/subhajit/data/web-BerkStan.mtx ...
-# order: 685230 size: 7600595 [directed] {}
-# order: 685230 size: 13298940 [directed] {} (symmetricize)
-# OMP_NUM_THREADS=12
-# [-0.000316 modularity] noop
-# [01208.700 ms; 0028 iterations; 009 passes; 0.935839 modularity] louvainSeq
-# [01747.514 ms; 0027 iterations; 009 passes; 0.938295 modularity] louvainOmp {sch_kind: static, chunk_size: 1}
-# [01569.095 ms; 0025 iterations; 009 passes; 0.933566 modularity] louvainOmp {sch_kind: static, chunk_size: 2}
-# [01541.691 ms; 0025 iterations; 009 passes; 0.938013 modularity] louvainOmp {sch_kind: static, chunk_size: 4}
-# ...
-```
+### Adjusting number of threads (Strong scaling)
 
-[![](https://i.imgur.com/9JVW1Au.png)][sheetp]
-[![](https://i.imgur.com/sY4bEZz.png)][sheetp]
-[![](https://i.imgur.com/BbpUupy.png)][sheetp]
-[![](https://i.imgur.com/JIqnZjh.png)][sheetp]
+In this experiment ([adjust-threads]), we perform OpenMP-based Louvain algorithm
+with the number of threads varying from `2` to `48` in steps of `2` (the system
+has 2 CPUs with 12 cores each and 2 hyper-threads per core). Each thread uses
+its own accumulation hashtable in order to find the most suitable community to
+join to, for each vertex. Once the best community is found, the community
+membership of that vertex is updated, along with the total weight of each
+community. This update can affect the community moving decision of other
+vertices (ordered approach). We choose the Louvain *parameters* as `resolution = 1.0`,
+`tolerance = 1e-2` (for local-moving phase) with *tolerance* decreasing
+after every pass by a factor of `toleranceDeclineFactor = 10`, and a
+`passTolerance = 0.0` (when passes stop). In addition we limit the maximum
+number of iterations in a single local-moving phase with `maxIterations = 500`,
+and limit the maximum number of passes with `maxPasses = 500`. We run the
+Louvain algorithm until convergence (or until the maximum limits are exceeded),
+and measure the **time taken** for the *computation* (performed 5 times for
+averaging), the **modularity score**, the **total number of iterations** (in the
+*local-moving phase*), and the number of **passes**. This is repeated for
+*seventeen* different graphs.
+
+From the results, we make make the following observations. **Increasing the number**
+of threads **only decreases the runtime** of the Louvain algorithm **by a small**
+**amount**. Utilizing all 48 threads for community detection significantly increases
+the time required for obtaining the results. The number of iterations required
+to converge also increases with the number of threads, indicating that the
+behaviour of OpenMP-based Louvain algorithm starts to approach the unordered
+variant of the algorithm, which converges mush more slowly than the ordered
+variant.
+
+[adjust-threads]: https://github.com/puzzlef/louvain-communities-openmp/tree/adjust-threads
+
+<br>
+
+
+### Other experiments
+
+- [adjust-schedule-unordered](https://github.com/puzzlef/louvain-communities-openmp/tree/adjust-schedule-unordered)
 
 <br>
 <br>
@@ -145,7 +153,8 @@ $ ...
 <br>
 <br>
 
-[![](https://i.imgur.com/b4TCcWX.jpg)](https://www.youtube.com/watch?v=M6npDdVGue4)<br>
+
+[![](https://img.youtube.com/vi/M6npDdVGue4/maxresdefault.jpg)](https://www.youtube.com/watch?v=M6npDdVGue4)<br>
 [![ORG](https://img.shields.io/badge/org-puzzlef-green?logo=Org)](https://puzzlef.github.io)
 [![DOI](https://zenodo.org/badge/519156419.svg)](https://zenodo.org/badge/latestdoi/519156419)
 
@@ -154,7 +163,3 @@ $ ...
 [Prof. Kishore Kothapalli]: https://faculty.iiit.ac.in/~kkishore/
 [SuiteSparse Matrix Collection]: https://sparse.tamu.edu
 [Louvain]: https://en.wikipedia.org/wiki/Louvain_method
-[gist]: https://gist.github.com/wolfram77/07d31e40dee392a1860edfb24d35943b
-[charts]: https://imgur.com/a/FntD3KO
-[sheets]: https://docs.google.com/spreadsheets/d/1aMGHE5KtHl30qvDH0Sq1W46ZuNssbs0FKiQyaUFtkMg/edit?usp=sharing
-[sheetp]: https://docs.google.com/spreadsheets/d/e/2PACX-1vQ3DMyRo-a7EA3XrY4mR1ABCo5kscSnOG9M6UCD_7MIlr2UltaSrAJ6eTMqNEL-BZjP5t8BbthQYzb9/pubhtml
