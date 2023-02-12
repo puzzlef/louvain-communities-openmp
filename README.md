@@ -1,5 +1,5 @@
-Effect of adjusting schedule in OpenMP-based Louvain algorithm for community
-detection.
+Effect of adjusting schedule in OpenMP-based unordered Louvain algorithm for
+community detection.
 
 [Louvain] is an algorithm for **detecting communities in graphs**. *Community*
 *detection* helps us understand the *natural divisions in a network* in an
