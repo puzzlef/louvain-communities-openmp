@@ -61,8 +61,18 @@ void runExperiment(const G& x) {
     );
   };
   // Find static Louvain.
+  omp_set_schedule(omp_sched_static, 2048);
   auto b1 = louvainStaticOmp(x, init, {repeat});
-  flog(b1, "louvainStaticOmp");
+  flog(b1, "louvainStaticOmpStaticSchedule");
+  omp_set_schedule(omp_sched_dynamic, 2048);
+  auto b2 = louvainStaticOmp(x, init, {repeat});
+  flog(b2, "louvainStaticOmpDynamicSchedule");
+  omp_set_schedule(omp_sched_guided, 2048);
+  auto b3 = louvainStaticOmp(x, init, {repeat});
+  flog(b3, "louvainStaticOmpGuidedSchedule");
+  omp_set_schedule(omp_sched_auto, 2048);
+  auto b4 = louvainStaticOmp(x, init, {repeat});
+  flog(b4, "louvainStaticOmpAutoSchedule");
 }
 
 
