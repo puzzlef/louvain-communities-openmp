@@ -2,11 +2,10 @@ const fs = require('fs');
 const os = require('os');
 const path = require('path');
 
+const ROMPTH = /^OMP_NUM_THREADS=(\d+)/;
 const RGRAPH = /^Loading graph .*\/(.*?)\.mtx \.\.\./m;
-const RORDER = /^order: (\d+) size: (\d+) (?:\[\w+\] )?\{\} \(symmetricize\)/m;
-const ROMPTH = /^OMP_NUM_THREADS=(\d+)/m;
-const RORGNL = /^\[(\S+?) modularity\] noop/;
-const RRESLT = /^\[(\S+?) ms; (\d+) iterations; (\d+) passes; (\S+?) modularity\] (\w+)(?: \{sch_kind: (\w+), chunk_size: (\d+)\})?/m;
+const RORDER = /^order: (\d+) size: (\d+) (?:\[\w+\] )?\{\}/m;
+const RRESLT = /^\{-(.+?)\/\+(.+?) \[(\d+)\] batch, (.+?) threads\} -> \{(.+?)\/(.+?)ms, (.+?) iters, (.+?) passes, (.+?) modularity\} (.+)/m;
 
 
 
@@ -45,42 +44,34 @@ function writeCsv(pth, rows) {
 // -----
 
 function readLogLine(ln, data, state) {
-  if (RGRAPH.test(ln)) {
+  ln = ln.replace(/^\d+-\d+-\d+ \d+:\d+:\d+ /, '');
+  if (ROMPTH.test(ln)) {
+    var [, omp_num_threads] = ROMPTH.exec(ln);
+    state.omp_num_threads   = parseFloat(omp_num_threads);
+  }
+  else if (RGRAPH.test(ln)) {
     var [, graph] = RGRAPH.exec(ln);
     if (!data.has(graph)) data.set(graph, []);
-    state = {graph};
+    state.graph = graph;
   }
   else if (RORDER.test(ln)) {
     var [, order, size] = RORDER.exec(ln);
     state.order = parseFloat(order);
     state.size  = parseFloat(size);
   }
-  else if (ROMPTH.test(ln)) {
-    var [, omp_num_threads] = ROMPTH.exec(ln);
-    state.omp_num_threads = parseFloat(omp_num_threads);
-  }
-  else if (RORGNL.test(ln)) {
-    var [, modularity] = RORGNL.exec(ln);
-    data.get(state.graph).push(Object.assign({}, state, {
-      time:          0,
-      iterations:    0,
-      passes:        0,
-      modularity:    parseFloat(modularity),
-      technique:     'noop',
-      schedule_kind: '',
-      chunk_size:    0,
-    }));
-  }
   else if (RRESLT.test(ln)) {
-    var [, time, iterations, passes, modularity, technique, schedule_kind, chunk_size] = RRESLT.exec(ln);
+    var [, batch_deletions_size, batch_insertions_size, batch_index, num_threads, preprocessing_time, time, iterations, passes, modularity, technique] = RRESLT.exec(ln);
     data.get(state.graph).push(Object.assign({}, state, {
-      time:          parseFloat(time),
-      iterations:    parseFloat(iterations),
-      passes:        parseFloat(passes),
-      modularity:    parseFloat(modularity),
-      technique:     technique || '',
-      schedule_kind: schedule_kind || '',
-      chunk_size:    parseFloat(chunk_size || '0'),
+      batch_deletions_size:  parseFloat(batch_deletions_size),
+      batch_insertions_size: parseFloat(batch_insertions_size),
+      batch_index: parseFloat(batch_index),
+      num_threads: parseFloat(num_threads),
+      preprocessing_time:    parseFloat(preprocessing_time),
+      time:        parseFloat(time),
+      iterations:  parseFloat(iterations),
+      passes:      parseFloat(passes),
+      modularity:  parseFloat(modularity),
+      technique,
     }));
   }
   return state;
@@ -90,7 +81,7 @@ function readLog(pth) {
   var text  = readFile(pth);
   var lines = text.split('\n');
   var data  = new Map();
-  var state = null;
+  var state = {};
   for (var ln of lines)
     state = readLogLine(ln, data, state);
   return data;
@@ -102,11 +93,12 @@ function readLog(pth) {
 // PROCESS-*
 // ---------
 
-
 function processCsv(data) {
   var a = [];
-  for (var rows of data.values())
-    a.push(...rows);
+  for (var rows of data.values()) {
+    for (var row of rows)
+      a.push(row);
+  }
   return a;
 }
 
