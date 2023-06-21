@@ -1,10 +1,10 @@
 #pragma once
-#include "duplicate.hxx"
+#include "update.hxx"
 
 
 
 
-// HAS-SELF-LOOP
+// HAS SELF-LOOP
 // -------------
 
 template <class G, class K>
@@ -38,16 +38,33 @@ inline auto selfLoopCount(const G& x) {
 
 
 
-// SELF-LOOPS
-// ----------
+// SELF-LOOP
+// ---------
 
-template <class G, class E, class F>
-void selfLoopU(G& a, const E& w, F fn) {
-  a.forEachVertexKey([&](auto u) { if (fn(u)) a.addEdge(u, u, w); });
-  a.correct();
+template <class G, class E, class FT>
+inline void selfLoopU(G& a, E w, FT ft) {
+  a.forEachVertexKey([&](auto u) { if (ft(u)) a.addEdge(u, u, w); });
+  a.update();
 }
-template <class G, class E, class F>
-auto selfLoop(const G& x, const E& w, F fn) {
-  auto a = duplicate(x); selfLoopU(a, w, fn);
+template <class G, class E, class FT>
+inline auto selfLoop(const G& x, E w, FT ft) {
+  G a = x; selfLoopU(a, w, ft);
   return a;
 }
+
+
+#ifdef OPENMP
+template <class G, class E, class FT>
+inline void selfLoopOmpU(G& a, E w, FT ft) {
+  #pragma omp parallel
+  {
+    a.forEachVertexKey([&](auto u) { if (ft(u)) addEdgeOmpU(a, u, u, w); });
+  }
+  updateOmpU(a);
+}
+template <class G, class E, class FT>
+inline auto selfLoopOmp(const G& x, E w, FT ft) {
+  G a = x; selfLoopOmpU(a, w, ft);
+  return a;
+}
+#endif

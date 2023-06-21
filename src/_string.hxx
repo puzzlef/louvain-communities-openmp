@@ -1,16 +1,18 @@
 #pragma once
 #include <string>
+#include "_debug.hxx"
 
 using std::string;
 
 
 
 
-// COUNT-LINES
+// COUNT LINES
 // -----------
 // For counting temporal edges.
 
 size_t countLines(const char* x) {
+  ASSERT(x);
   size_t a = 1;
   for (; *x; x++) {
     if (*x == '\r' || *x == '\n') ++a;
@@ -18,6 +20,6 @@ size_t countLines(const char* x) {
   }
   return a;
 }
-size_t countLines(const string& x) {
+inline size_t countLines(const string& x) {
   return countLines(x.c_str());
 }

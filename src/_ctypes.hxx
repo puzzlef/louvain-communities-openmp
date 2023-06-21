@@ -1,11 +1,20 @@
 #pragma once
+#include <cstddef>
+#include <type_traits>
 #include <istream>
 #include <ostream>
-#include <utility>
 
-using std::pair;
+using std::make_signed_t;
 using std::istream;
 using std::ostream;
+
+
+
+
+// BASIC
+// -----
+
+using ssize_t = make_signed_t<size_t>;
 
 
 
@@ -28,9 +37,9 @@ struct None {
   friend ostream& operator<<(ostream& a, None x)  noexcept { return a; }
 
   // Lifetime operators.
-  None() {}
+  explicit None() {}
   template <class T>
-  None(T _) {}
+  explicit None(T _) {}
 };
 #define NONE None
 #endif
@@ -38,7 +47,7 @@ struct None {
 
 
 
-// TEMPLATE-TYPE
+// TEMPLATE TYPE
 // -------------
 // For template classes in template :).
 

@@ -1,6 +1,9 @@
 #pragma once
 #include <utility>
 #include <chrono>
+#ifdef MPI
+#include "_mpi.hxx"
+#endif
 
 using std::pair;
 using std::chrono::microseconds;
@@ -29,36 +32,75 @@ struct PairSecondValue { inline V operator()(const pair<K, V>& x) noexcept { ret
 
 
 
-// MEASURE-DURATION
+// MEASURE DURATION
 // ----------------
 
+/** Get current time. */
 inline auto timeNow() {
   return high_resolution_clock::now();
 }
+
+/** Get time duration in milliseconds. */
 template <class T>
-float durationMilliseconds(const T& start, const T& stop) {
+inline float duration(const T& start, const T& stop) {
   auto a = duration_cast<microseconds>(stop - start);
   return a.count()/1000.0f;
 }
 
+/** Get time duration in milliseconds. */
+template <class T>
+inline float duration(const T& start) {
+  auto stop = timeNow();
+  return duration(start, stop);
+}
+
 
 template <class F>
-float measureDuration(F fn, int N=1) {
-  auto start = high_resolution_clock::now();
-  for (int i=0; i<N; i++)
+inline float measureDuration(F fn, int N=1) {
+  auto start = timeNow();
+  for (int i=0; i<N; ++i)
     fn();
-  auto stop = high_resolution_clock::now();
-  return durationMilliseconds(start, stop)/N;
+  auto stop  = timeNow();
+  return duration(start, stop)/N;
 }
+
+#ifdef MPI
+template <class F>
+inline float measureDurationMpi(F fn, int N=1) {
+  double total = 0;
+  for (int i=0; i<N; ++i) {
+    // Match up with other processes before start.
+    MPI_Barrier(MPI_COMM_WORLD);
+    double start = MPI_Wtime();
+    fn();
+    // Let all processes complete together.
+    MPI_Barrier(MPI_COMM_WORLD);
+    double stop  = MPI_Wtime();
+    total += stop - start;
+  }
+  // Report in milliseconds.
+  return float(total*1000/N);
+}
+#endif
 
 
 template <class F>
-float measureDurationMarked(F fn, int N=1) {
-  float duration = 0;
-  for (int i=0; i<N; i++)
-    fn([&](auto fm) { duration += measureDuration(fm); });
-  return duration/N;
+inline float measureDurationMarked(F fn, int N=1) {
+  float total = 0;
+  for (int i=0; i<N; ++i)
+    fn([&](auto fm) { total += measureDuration(fm); });
+  return total/N;
 }
+
+#ifdef MPI
+template <class F>
+inline float measureDurationMarkedMpi(F fn, int N=1) {
+  float total = 0;
+  for (int i=0; i<N; ++i)
+    fn([&](auto fm) { total += measureDurationMpi(fm); });
+  return total/N;
+}
+#endif
 
 
 
@@ -67,8 +109,8 @@ float measureDurationMarked(F fn, int N=1) {
 // -----
 
 template <class F>
-bool retry(F fn, int N=2) {
-  for (int i=0; i<N; i++)
+inline bool retry(F fn, int N=2) {
+  for (int i=0; i<N; ++i)
     if (fn()) return true;
   return false;
 }

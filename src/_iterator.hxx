@@ -24,8 +24,8 @@ using std::max;
 
 
 
-// ITERATOR-*
-// ----------
+// ITERATOR HELPER MACROS
+// ----------------------
 // Helps create iterators.
 
 #ifndef PAREN_OPEN
@@ -342,8 +342,8 @@ using std::max;
 
 
 
-// ITERABLE-*
-// ----------
+// ITERABLE HELPER MACROS
+// ----------------------
 // Helps create iterables.
 
 #ifndef ITERABLE_ITERATOR
@@ -475,7 +475,7 @@ inline auto iterable(const J& x) {
 
 
 
-// SIZED-ITERABLE
+// SIZED ITERABLE
 // --------------
 
 template <class I>
@@ -510,7 +510,7 @@ inline auto sizedIterable(const J& x) {
 
 
 
-// PAIRED-ITERABLE
+// PAIRED ITERABLE
 // ---------------
 
 #define PAIRED_ITERABLE_SHORT_TYPES(I) \
@@ -598,7 +598,7 @@ inline size_t size(const SizedIterable<I>& x) {
 
 
 
-// FAST-SIZE
+// FAST SIZE
 // ---------
 // Fast size in O(1).
 
@@ -612,7 +612,7 @@ inline size_t fastSize(const SizedIterable<I>& x) noexcept {
 }
 template <class J>
 inline size_t fastSize(const J& x) noexcept {
-  return -1;
+  return size_t(-1);
 }
 
 
@@ -635,7 +635,7 @@ inline auto sliceIterable(const J& x, size_t i, size_t I) {
 
 
 
-// DEFAULT-ITERATOR
+// DEFAULT ITERATOR
 // ----------------
 // Return default value of type, always.
 
@@ -683,7 +683,7 @@ inline auto default_value_iterator(const T& _) noexcept {
 
 
 
-// RANGE-ITERATOR
+// RANGE ITERATOR
 // --------------
 
 template <class T>
@@ -749,7 +749,7 @@ inline auto rangeVector(T v, T V, T DV=1) {
 
 
 
-// CIRCULAR-ITERATOR
+// CIRCULAR ITERATOR
 // -----------------
 
 #ifndef CIRCULAR_ITERATOR_ACCESS
@@ -808,7 +808,7 @@ inline auto inputCircularIterable(const J& x, size_t i, size_t I) noexcept {
 
 
 
-// PAIR-ITERATOR
+// PAIR ITERATOR
 // -------------
 
 #ifndef PAIR_ITERATOR_ACCESS
@@ -990,7 +990,7 @@ inline auto pairIterable(const J0& x0, const J1& x1) {
 
 
 
-// FILTER-ITERATOR
+// FILTER ITERATOR
 // ---------------
 
 #ifndef FILTER_ITERATOR_ACCESS
@@ -1105,7 +1105,7 @@ inline auto filterIterable(const J& x, F fn) {
 
 
 
-// CONDITIONAL-ITERATOR
+// CONDITIONAL ITERATOR
 // --------------------
 
 #ifndef CONDITIONAL_ITERATOR_ACCESS
@@ -1220,7 +1220,7 @@ inline auto conditionalIterable(const J& x, const JC& c) {
 
 
 
-// TRANSFORM-ITERATOR
+// TRANSFORM ITERATOR
 // ------------------
 
 #ifndef TRANSFORM_ITERATOR_ACCESS
@@ -1446,7 +1446,7 @@ inline auto transformIterable(const J& x, F fn) {
 
 
 
-// STATIC-TRANSFORM-ITERATOR
+// STATIC TRANSFORM ITERATOR
 // -------------------------
 
 #ifndef STATIC_TRANSFORM_ITERATOR
@@ -1611,7 +1611,7 @@ inline auto staticTransformIterable(const J& x, F _) {
 
 
 
-// TERNARY-ITERATOR
+// TERNARY ITERATOR
 // ----------------
 // Select iterator by boolean.
 
@@ -1799,7 +1799,7 @@ inline auto ternaryIterable(bool sel, const J1& x1, const J0& x0) {
 
 
 
-// SELECT-ITERATOR
+// SELECT ITERATOR
 // ---------------
 // Select iterator by index.
 // Can be done using tuples.

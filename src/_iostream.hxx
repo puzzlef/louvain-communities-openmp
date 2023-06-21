@@ -1,39 +1,26 @@
 #pragma once
+#include <ctime>
+#include <type_traits>
 #include <utility>
+#include <iterator>
 #include <array>
-#include <string>
 #include <vector>
 #include <ostream>
-#include <fstream>
 #include <iostream>
-#include <type_traits>
-#include <iterator>
+#include <chrono>
 
 using std::pair;
 using std::array;
-using std::string;
 using std::vector;
-using std::ios;
 using std::ostream;
-using std::ifstream;
 using std::is_fundamental;
 using std::iterator_traits;
+using std::time_t;
+using std::tm;
+using std::localtime;
+using std::chrono::time_point;
+using std::chrono::system_clock;
 using std::cout;
-
-
-
-
-// READ-FILE
-// ---------
-
-string readFile(const char *pth) {
-  string a; ifstream f(pth);
-  f.seekg(0, ios::end);
-  a.resize(f.tellg());
-  f.seekg(0);
-  f.read((char*) a.data(), a.size());
-  return a;
-}
 
 
 
@@ -42,7 +29,7 @@ string readFile(const char *pth) {
 // -----
 
 template <class I>
-void write_values(ostream& a, I ib, I ie) {
+inline void write_values(ostream& a, I ib, I ie) {
   using T = typename iterator_traits<I>::value_type;
   if (is_fundamental<T>::value) {
     a << "{";
@@ -58,34 +45,65 @@ void write_values(ostream& a, I ib, I ie) {
   }
 }
 template <class J>
-void writeValues(ostream& a, const J& x) {
+inline void writeValues(ostream& a, const J& x) {
   write_values(a, x.begin(), x.end());
 }
 
 template <class K, class V>
-void write(ostream& a, const pair<K, V>& x) {
+inline void write(ostream& a, const pair<K, V>& x) {
   a << x.first << ": " << x.second;
 }
 template <class T, size_t N>
-void write(ostream& a, const array<T, N>& x) {
+inline void write(ostream& a, const array<T, N>& x) {
   writeValues(a, x);
 }
 template <class T>
-void write(ostream& a, const vector<T>& x) {
+inline void write(ostream& a, const vector<T>& x) {
   writeValues(a, x);
 }
 
 template <class K, class V>
-ostream& operator<<(ostream& a, const pair<K, V>& x) {
+inline ostream& operator<<(ostream& a, const pair<K, V>& x) {
   write(a, x); return a;
 }
 template <class T, size_t N>
-ostream& operator<<(ostream& a, const array<T, N>& x) {
+inline ostream& operator<<(ostream& a, const array<T, N>& x) {
   write(a, x); return a;
 }
 template <class T>
-ostream& operator<<(ostream& a, const vector<T>& x) {
+inline ostream& operator<<(ostream& a, const vector<T>& x) {
   write(a, x); return a;
+}
+
+
+
+
+// WRITE TIME
+// ----------
+
+inline void writeTime(ostream& a, const time_t& x) {
+  const int BUF = 64;
+  char  buf[BUF];
+  tm* t = localtime(&x);
+  sprintf(buf, "%04d-%02d-%02d %02d:%02d:%02d",
+    t->tm_year + 1900,
+    t->tm_mon  + 1,
+    t->tm_mday,
+    t->tm_hour,
+    t->tm_min,
+    t->tm_sec
+  );
+  a << buf;
+}
+inline void writeTimePoint(ostream& a, const time_point<system_clock>& x) {
+  writeTime(a, system_clock::to_time_t(x));
+}
+
+inline ostream& operator<<(ostream& a, const time_t& x) {
+  writeTime(a, x); return a;
+}
+inline ostream& operator<<(ostream& a, const time_point<system_clock>& x) {
+  writeTimePoint(a, x); return a;
 }
 
 
@@ -95,8 +113,7 @@ ostream& operator<<(ostream& a, const vector<T>& x) {
 // ------
 
 template <class T>
-void print(const T& x) { cout << x; }
-
+inline void print(const T& x)   { cout << x; }
 template <class T>
-void println(const T& x) { cout << x << "\n"; }
-void println() { cout << "\n"; }
+inline void println(const T& x) { cout << x << "\n"; }
+inline void println()           { cout << "\n"; }
