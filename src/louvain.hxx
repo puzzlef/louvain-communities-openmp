@@ -475,7 +475,7 @@ inline void louvainChangeCommunityOmpW(vector<K>& vcom, vector<W>& ctot, const G
  * @param fc has local moving phase converged?
  * @returns iterations performed (0 if converged already)
  */
-template <class G, class K, class W, class B, class FC>
+template <bool PRUNE=false, class G, class K, class W, class B, class FC>
 inline int louvainMoveW(vector<K>& vcom, vector<W>& ctot, vector<B>& vaff, vector<K>& vcs, vector<W>& vcout, const G& x, const vector<W>& vtot, double M, double R, int L, FC fc) {
   int l = 0;
   W  el = W();
@@ -486,8 +486,8 @@ inline int louvainMoveW(vector<K>& vcom, vector<W>& ctot, vector<B>& vaff, vecto
       louvainClearScanW(vcs, vcout);
       louvainScanCommunitiesW(vcs, vcout, x, u, vcom);
       auto [c, e] = louvainChooseCommunity(x, u, vcom, vtot, ctot, vcs, vcout, M, R);
-      if (c)      { louvainChangeCommunityW(vcom, ctot, x, u, c, vtot); x.forEachEdgeKey(u, [&](auto v) { vaff[v] = B(1); }); }
-      vaff[u] = B();
+      if (c)      { louvainChangeCommunityW(vcom, ctot, x, u, c, vtot); if (PRUNE) x.forEachEdgeKey(u, [&](auto v) { vaff[v] = B(1); }); }
+      if (PRUNE) vaff[u] = B();
       el += e;  // l1-norm
     });
     if (fc(el, l++)) break;
@@ -496,7 +496,7 @@ inline int louvainMoveW(vector<K>& vcom, vector<W>& ctot, vector<B>& vaff, vecto
 }
 
 #ifdef OPENMP
-template <class G, class K, class W, class B, class FC>
+template <bool PRUNE=false, class G, class K, class W, class B, class FC>
 inline int louvainMoveOmpW(vector<K>& vcom, vector<W>& ctot, vector<B>& vaff, vector<vector<K>*>& vcs, vector<vector<W>*>& vcout, const G& x, const vector<W>& vtot, double M, double R, int L, FC fc) {
   size_t S = x.span();
   int l = 0;
@@ -511,8 +511,8 @@ inline int louvainMoveOmpW(vector<K>& vcom, vector<W>& ctot, vector<B>& vaff, ve
       louvainClearScanW(*vcs[t], *vcout[t]);
       louvainScanCommunitiesW(*vcs[t], *vcout[t], x, u, vcom);
       auto [c, e] = louvainChooseCommunity(x, u, vcom, vtot, ctot, *vcs[t], *vcout[t], M, R);
-      if (c)      { louvainChangeCommunityOmpW(vcom, ctot, x, u, c, vtot); x.forEachEdgeKey(u, [&](auto v) { vaff[v] = B(1); }); }
-      vaff[u] = B();
+      if (c)      { louvainChangeCommunityOmpW(vcom, ctot, x, u, c, vtot); if (PRUNE) x.forEachEdgeKey(u, [&](auto v) { vaff[v] = B(1); }); }
+      if (PRUNE) vaff[u] = B();
       el += e;  // l1-norm
     }
     if (fc(el, l++)) break;
@@ -613,7 +613,7 @@ inline auto louvainAggregateOmp(vector<vector<K>*>& vcs, vector<vector<W>*>& vco
  * @param fm marking affected vertices / preprocessing to be performed (vaff)
  * @returns community each vertex belongs to
  */
-template <class FLAG=char, class G, class K, class FM>
+template <bool PRUNE=false, class FLAG=char, class G, class K, class FM>
 auto louvainSeq(const G& x, const vector<K> *q, const LouvainOptions& o, FM fm) {
   using  W = LOUVAIN_WEIGHT_TYPE;
   using  B = FLAG;
@@ -646,7 +646,7 @@ auto louvainSeq(const G& x, const vector<K> *q, const LouvainOptions& o, FM fm) 
         if (p==1) t1 = timeNow();
         const G& g = p==0? x : y;
         int m = 0;
-        tl += measureDuration([&]() { m = louvainMoveW(vcom, ctot, vaff, vcs, vcout, g, vtot, M, R, L, fc); });
+        tl += measureDuration([&]() { m = louvainMoveW<PRUNE>(vcom, ctot, vaff, vcs, vcout, g, vtot, M, R, L, fc); });
         if (p==0) copyValuesW(a, vcom);
         else      louvainLookupCommunitiesU(a, vcom);
         l += max(m, 1); ++p;
@@ -672,7 +672,7 @@ auto louvainSeq(const G& x, const vector<K> *q, const LouvainOptions& o, FM fm) 
 }
 
 #ifdef OPENMP
-template <class FLAG=char, class G, class K, class FM>
+template <bool PRUNE=false, class FLAG=char, class G, class K, class FM>
 auto louvainOmp(const G& x, const vector<K> *q, const LouvainOptions& o, FM fm) {
   using  W = LOUVAIN_WEIGHT_TYPE;
   using  B = FLAG;
@@ -710,7 +710,7 @@ auto louvainOmp(const G& x, const vector<K> *q, const LouvainOptions& o, FM fm) 
         if (p==1) t1 = timeNow();
         const G& g = p==0? x : y;
         int m = 0;
-        tl += measureDuration([&]() { m = louvainMoveOmpW(vcom, ctot, vaff, vcs, vcout, g, vtot, M, R, L, fc); });
+        tl += measureDuration([&]() { m = louvainMoveOmpW<PRUNE>(vcom, ctot, vaff, vcs, vcout, g, vtot, M, R, L, fc); });
         if (p==0) copyValuesW(a, vcom);
         else      louvainLookupCommunitiesOmpU(a, vcom);
         l += max(m, 1); ++p;
@@ -743,16 +743,16 @@ auto louvainOmp(const G& x, const vector<K> *q, const LouvainOptions& o, FM fm) 
 // LOUVAIN-STATIC
 // --------------
 
-template <class FLAG=char, class G, class K>
+template <bool PRUNE=false, class FLAG=char, class G, class K>
 inline auto louvainStaticSeq(const G& x, const vector<K>* q=nullptr, const LouvainOptions& o={}) {
   auto fm = [](auto& vertices) { fillValueU(vertices, FLAG(1)); };
-  return louvainSeq<FLAG>(x, q, o, fm);
+  return louvainSeq<PRUNE, FLAG>(x, q, o, fm);
 }
 
 #ifdef OPENMP
-template <class FLAG=char, class G, class K>
+template <bool PRUNE=false, class FLAG=char, class G, class K>
 inline auto louvainStaticOmp(const G& x, const vector<K>* q=nullptr, const LouvainOptions& o={}) {
   auto fm = [](auto& vertices) { fillValueOmpU(vertices, FLAG(1)); };
-  return louvainOmp<FLAG>(x, q, o, fm);
+  return louvainOmp<PRUNE, FLAG>(x, q, o, fm);
 }
 #endif
