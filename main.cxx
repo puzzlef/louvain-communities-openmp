@@ -63,6 +63,8 @@ void runExperiment(const G& x) {
   // Find static Louvain.
   auto b1 = louvainStaticOmp(x, init, {repeat});
   flog(b1, "louvainStaticOmp");
+  auto b2 = louvain2dStaticOmp(x, init, {repeat});
+  flog(b2, "louvain2dStaticOmp");
 }
 
 
