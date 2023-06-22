@@ -1,3 +1,8 @@
+## Generated files
+## ---------------
+*.csv
+
+
 ## VS Code
 ## -------
 .vscode/
