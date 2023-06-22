@@ -63,6 +63,10 @@ void runExperiment(const G& x) {
   // Find static Louvain.
   auto b1 = louvainStaticOmp(x, init, {repeat});
   flog(b1, "louvainStaticOmp");
+  auto b2 = louvainCloseStaticOmp(x, init, {repeat});
+  flog(b2, "louvainCloseStaticOmp");
+  auto b3 = louvainMapStaticOmp(x, init, {repeat});
+  flog(b3, "louvainMapStaticOmp");
 }
 
 

@@ -12,3 +12,5 @@
 #include "modularity.hxx"
 #include "random.hxx"
 #include "louvain.hxx"
+#include "louvainClose.hxx"
+#include "louvainMap.hxx"
