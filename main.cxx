@@ -53,11 +53,11 @@ void runExperiment(const G& x) {
   // Follow a specific result logging format, which can be easily parsed later.
   auto flog = [&](const auto& ans, const char *technique) {
     printf(
-      "{-%.3e/+%.3e batch, %03d threads} -> "
-      "{%09.1fms, %09.1fms preproc, %09.1fms firstpass, %09.1fms locmove, %09.1fms aggr, %zu/%zu affected, %04d iters, %03d passes, %01.9f modularity} %s\n",
-      0.0, 0.0, MAX_THREADS,
+      "{%03d threads} -> "
+      "{%09.1fms, %09.1fms preproc, %09.1fms firstpass, %09.1fms locmove, %09.1fms aggr, %zu affected, %04d iters, %03d passes, %01.9f modularity} %s\n",
+      MAX_THREADS,
       ans.time, ans.preprocessingTime, ans.firstPassTime, ans.localMoveTime, ans.aggregationTime,
-      ans.affectedVertices, x.order(), ans.iterations, ans.passes, getModularity(x, ans, M), technique
+      ans.affectedVertices, ans.iterations, ans.passes, getModularity(x, ans, M), technique
     );
   };
   // Find static Louvain.
