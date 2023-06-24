@@ -127,7 +127,7 @@ template <class G, class W>
 inline void louvainVertexWeightsOmpW(vector<W>& vtot, const G& x) {
   using  K = typename G::key_type;
   size_t S = x.span();
-  #pragma omp parallel for schedule(auto)
+  #pragma omp parallel for schedule(dynamic, 2048)
   for (K u=0; u<S; ++u) {
     if (!x.hasVertex(u)) continue;
     x.forEachEdge(u, [&](auto v, auto w) { vtot[u] += w; });
@@ -155,7 +155,7 @@ inline void louvainCommunityWeightsW(vector<W>& ctot, const G& x, const vector<K
 template <class G, class K, class W>
 inline void louvainCommunityWeightsOmpW(vector<W>& ctot, const G& x, const vector<K>& vcom, const vector<W>& vtot) {
   size_t S = x.span();
-  #pragma omp parallel for schedule(auto)
+  #pragma omp parallel for schedule(static, 2048)
   for (K u=0; u<S; ++u) {
     if (!x.hasVertex(u)) continue;
     K c = vcom[u];
@@ -185,7 +185,7 @@ inline void louvainInitializeW(vector<K>& vcom, vector<W>& ctot, const G& x, con
 template <class G, class K, class W>
 inline void louvainInitializeOmpW(vector<K>& vcom, vector<W>& ctot, const G& x, const vector<W>& vtot) {
   size_t S = x.span();
-  #pragma omp parallel for schedule(auto)
+  #pragma omp parallel for schedule(static, 2048)
   for (K u=0; u<S; ++u) {
     if (!x.hasVertex(u)) continue;
     vcom[u] = u;
@@ -216,7 +216,7 @@ inline void louvainInitializeFromW(vector<K>& vcom, vector<W>& ctot, const G& x,
 template <class G, class K, class W>
 inline void louvainInitializeFromOmpW(vector<K>& vcom, vector<W>& ctot, const G& x, const vector<W>& vtot, const vector<K>& q) {
   size_t S = x.span();
-  #pragma omp parallel for schedule(auto)
+  #pragma omp parallel for schedule(static, 2048)
   for (K u=0; u<S; ++u) {
     if (!x.hasVertex(u)) continue;
     K c = q[u];
@@ -264,7 +264,7 @@ inline size_t louvainCountCommunityVerticesOmpW(K *a, const G& x, const K *vcom)
   size_t S = x.span();
   size_t n = 0;
   fillValueOmpU(a, S, K());
-  #pragma omp parallel for schedule(auto) reduction(+:n)
+  #pragma omp parallel for schedule(static, 2048) reduction(+:n)
   for (K u=0; u<S; ++u) {
     if (!x.hasVertex(u)) continue;
     K c = vcom[u], m = 0;
@@ -310,7 +310,7 @@ inline void louvainCommunityVerticesOmpW(vector<K>& co, vector<K>& ce, vector<K>
   size_t S = x.span();
   co[S] = exclusiveScanOmpW(co, bufk, cn);
   fillValueOmpU(cn, K());
-  #pragma omp parallel for schedule(auto)
+  #pragma omp parallel for schedule(static, 2048)
   for (K u=0; u<S; ++u) {
     if (!x.hasVertex(u)) continue;
     K c = vcom[u], i = 0;
@@ -342,7 +342,7 @@ inline void louvainLookupCommunitiesU(vector<K>& a, const vector<K>& vcom) {
 template <class K>
 inline void louvainLookupCommunitiesOmpU(vector<K>& a, const vector<K>& vcom) {
   size_t S = a.size();
-  #pragma omp parallel for schedule(auto)
+  #pragma omp parallel for schedule(static, 2048)
   for (size_t u=0; u<S; ++u)
     a[u] = vcom[a[u]];
 }
@@ -503,7 +503,7 @@ inline int louvainMoveOmpW(vector<K>& vcom, vector<W>& ctot, vector<B>& vaff, ve
   W  el = W();
   for (; l<L;) {
     el = W();
-    #pragma omp parallel for schedule(auto) reduction(+:el)
+    #pragma omp parallel for schedule(dynamic, 2048) reduction(+:el)
     for (K u=0; u<S; ++u) {
       int t = omp_get_thread_num();
       if (!x.hasVertex(u)) continue;
@@ -564,7 +564,7 @@ template <class G, class K, class W>
 inline void louvainAggregateOmpW(G& a, vector<vector<K>*>& vcs, vector<vector<W>*>& vcout, const G& x, const vector<K>& vcom, const vector<K>& co, const vector<K>& ce) {
   size_t S = x.span();
   a.respan(S);
-  #pragma omp parallel for schedule(auto)
+  #pragma omp parallel for schedule(dynamic, 2048)
   for (K c=0; c<S; ++c) {
     int t = omp_get_thread_num();
     K oc = co[c];
