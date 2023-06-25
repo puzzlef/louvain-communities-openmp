@@ -369,8 +369,9 @@ class DiGraph {
  * @tparam K key type (vertex id)
  * @tparam V vertex value type (vertex data)
  * @tparam E edge value type (edge weight)
+ * @tparam O offset type
  */
-template <class K=uint32_t, class V=None, class E=None>
+template <class K=uint32_t, class V=None, class E=None, class O=size_t>
 class DiGraphCsr {
   #pragma region TYPES
   public:
@@ -386,7 +387,7 @@ class DiGraphCsr {
   #pragma region DATA
   public:
   /** Offsets of the outgoing edges of vertices. */
-  vector<size_t> offsets;
+  vector<O> offsets;
   /** Degree of each vertex. */
   vector<K> degrees;
   /** Vertex values. */
