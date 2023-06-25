@@ -334,6 +334,258 @@ class DiGraph {
   #pragma endregion
   #pragma endregion
 };
+
+
+
+/**
+ * A directed graph with CSR representation.
+ * @tparam K key type (vertex id)
+ * @tparam V vertex value type (vertex data)
+ * @tparam E edge value type (edge weight)
+ */
+template <class K=uint32_t, class V=None, class E=None>
+class DiGraphCsr {
+  #pragma region TYPES
+  public:
+  /** Key type (vertex id). */
+  using key_type = K;
+  /** Vertex value type (vertex data). */
+  using vertex_value_type = V;
+  /** Edge value type (edge weight). */
+  using edge_value_type   = E;
+  #pragma endregion
+
+
+  #pragma region DATA
+  public:
+  /** Offsets of the outgoing edges of vertices. */
+  vector<size_t> offsets;
+  /** Degree of each vertex. */
+  vector<K> degrees;
+  /** Vertex values. */
+  vector<V> values;
+  /** Vertex ids of the outgoing edges of each vertex (lookup using offsets). */
+  vector<K> edgeKeys;
+  /** Edge weights of the outgoing edges of each vertex (lookup using offsets). */
+  vector<E> edgeValues;
+  #pragma endregion
+
+
+  #pragma region METHODS
+  #pragma region PROPERTIES
+  public:
+  /**
+   * Get the size of buffer required to store data associated with each vertex
+   * in the graph, indexed by its vertex-id.
+   * @returns size of buffer required
+   */
+  inline size_t span() const noexcept {
+    return degrees.size();
+  }
+
+  /**
+   * Get the number of vertices in the graph.
+   * @returns |V|
+   */
+  inline size_t order() const noexcept {
+    return degrees.size();
+  }
+
+  /**
+   * Obtain the number of edges in the graph.
+   * @returns |E|
+   */
+  inline size_t size() const noexcept {
+    size_t M = 0;
+    for (auto d : degrees)
+      M += d;
+    return M;
+  }
+
+  /**
+   * Check if the graph is empty.
+   * @returns is the graph empty?
+   */
+  inline bool empty() const noexcept {
+    return degrees.empty();
+  }
+
+  /**
+   * Check if the graph is directed.
+   * @returns is the graph directed?
+   */
+  inline bool directed() const noexcept {
+    return true;
+  }
+  #pragma endregion
+
+
+  #pragma region FOREACH
+  public:
+  /**
+   * Iterate over the vertices in the graph.
+   * @param fp process function (vertex id, vertex data)
+   */
+  template <class F>
+  inline void forEachVertex(F fp) const noexcept {
+    for (K u=0; u<span(); ++u)
+      fp(u, values[u]);
+  }
+
+  /**
+   * Iterate over the vertex ids in the graph.
+   * @param fp process function (vertex id)
+   */
+  template <class F>
+  inline void forEachVertexKey(F fp) const noexcept {
+    for (K u=0; u<span(); ++u)
+      fp(u);
+  }
+
+  /**
+   * Iterate over the outgoing edges of a source vertex in the graph.
+   * @param u source vertex id
+   * @param fp process function (target vertex id, edge weight)
+   */
+  template <class F>
+  inline void forEachEdge(K u, F fp) const noexcept {
+    size_t i = offsets[u];
+    size_t d = degrees[u];
+    for (size_t I=i+d; i<I; ++i)
+      fp(edgeKeys[i], edgeValues[i]);
+  }
+
+  /**
+   * Iterate over the target vertex ids of a source vertex in the graph.
+   * @param u source vertex id
+   * @param fp process function (target vertex id)
+   */
+  template <class F>
+  inline void forEachEdgeKey(K u, F fp) const noexcept {
+    size_t i = offsets[u];
+    size_t d = degrees[u];
+    for (size_t I=i+d; i<I; ++i)
+      fp(edgeKeys[i]);
+  }
+  #pragma endregion
+
+
+  #pragma region OFFSET
+  public:
+  /**
+   * Get the offset of an edge in the graph.
+   * @param u source vertex id
+   * @param v target vertex id
+   * @returns offset of the edge, or -1 if it does not exist
+   */
+  inline size_t edgeOffset(K u, K v) const noexcept {
+    if (!hasVertex(u) || !hasVertex(v)) return size_t(-1);
+    size_t  i = offsets[u];
+    size_t  d = degrees[u];
+    auto   ib = edgeKeys.begin() + i;
+    auto   ie = edgeKeys.begin() + i + d;
+    auto   it = find(ib, ie, v);
+    return it!=ie? it - edgeKeys.begin() : size_t(-1);
+  }
+  #pragma endregion
+
+
+  #pragma region ACCESS
+  public:
+  /**
+   * Check if a vertex exists in the graph.
+   * @param u vertex id
+   * @returns does the vertex exist?
+   */
+  inline bool hasVertex(K u) const noexcept {
+    return u < span();
+  }
+
+  /**
+   * Check if an edge exists in the graph.
+   * @param u source vertex id
+   * @param v target vertex id
+   * @returns does the edge exist?
+   */
+  inline bool hasEdge(K u, K v) const noexcept {
+    size_t o = edgeOffset(u, v);
+    return o != size_t(-1);
+  }
+
+  /**
+   * Get the number of outgoing edges of a vertex in the graph.
+   * @param u vertex id
+   * @returns number of outgoing edges of the vertex
+   */
+  inline size_t degree(K u) const noexcept {
+    return u < span()? degrees[u] : 0;
+  }
+
+  /**
+   * Get the vertex data of a vertex in the graph.
+   * @param u vertex id
+   * @returns associated data of the vertex
+   */
+  inline V vertexValue(K u) const noexcept {
+    return u < span()? values[u] : V();
+  }
+
+  /**
+   * Set the vertex data of a vertex in the graph.
+   * @param u vertex id
+   * @param d associated data of the vertex
+   * @returns success?
+   */
+  inline bool setVertexValue(K u, V d) noexcept {
+    if (!hasVertex(u)) return false;
+    values[u] = d;
+    return true;
+  }
+
+  /**
+   * Get the edge weight of an edge in the graph.
+   * @param u source vertex id
+   * @param v target vertex id
+   * @returns associated weight of the edge
+   */
+  inline E edgeValue(K u, K v) const noexcept {
+    size_t o = edgeOffset(u, v);
+    return o != size_t(-1)? edgeValues[o] : E();
+  }
+
+  /**
+   * Set the edge weight of an edge in the graph.
+   * @param u source vertex id
+   * @param v target vertex id
+   * @param w associated weight of the edge
+   * @returns success?
+   */
+  inline bool setEdgeValue(K u, K v, E w) noexcept {
+    size_t o = edgeOffset(u, v);
+    if (o == size_t(-1)) return false;
+    edgeValues[o] = w;
+    return true;
+  }
+  #pragma endregion
+  #pragma endregion
+
+
+  #pragma region CONSTRUCTORS
+  public:
+  /**
+   * Allocate space for CSR representation of a directed graph.
+   * @param n number of vertices
+   * @param m number of edges
+   */
+  DiGraphCsr(size_t n, size_t m) {
+    offsets.resize(n+1);
+    degrees.resize(n);
+    values.resize(n);
+    edgeKeys.resize(m);
+    edgeValues.resize(m);
+  }
+  #pragma endregion
+};
 #pragma endregion
 
 
