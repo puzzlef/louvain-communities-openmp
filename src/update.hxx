@@ -98,7 +98,7 @@ inline void updateOmpU(G& a) {
   for (int i=0; i<THREADS; ++i)
     bufs[i] = new vector<pair<K, E>>();
   // Update edges of each vertex individually.
-  #pragma omp parallel for schedule(auto)
+  #pragma omp parallel for schedule(dynamic, 2048)
   for (K u=0; u<S; ++u) {
     int t = omp_get_thread_num();
     a.updateEdges(u, bufs[t]);
