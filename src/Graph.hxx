@@ -297,6 +297,21 @@ class DiGraph {
   }
 
   /**
+   * Add an outgoing edge to the graph if a condition is met.
+   * @tparam FT condition on the source vertex
+   * @param u source vertex id
+   * @param v target vertex id
+   * @param w associated weight of the edge
+   * @param ft test function (source vertex id)
+   */
+  template <class FT>
+  inline void addEdgeIf(K u, K v, E w, FT ft) {
+    addVertex(u);
+    addVertex(v);
+    if (ft(u)) edges[u].add(v, w);
+  }
+
+  /**
    * Add an outgoing edge to the graph.
    * @param u source vertex id
    * @param v target vertex id
@@ -304,9 +319,21 @@ class DiGraph {
    * @note This operation is lazy.
    */
   inline void addEdge(K u, K v, E w=E()) {
-    addVertex(u);
-    addVertex(v);
-    edges[u].add(v, w);
+    auto ft = [](K u) { return true; };
+    addEdgeIf(u, v, w, ft);
+  }
+
+  /**
+   * Remove an outgoing edge from the graph if a condition is met.
+   * @tparam FT condition on the source vertex
+   * @param u source vertex id
+   * @param v target vertex id
+   * @param ft test function (source vertex id)
+   */
+  template <class FT>
+  inline void removeEdgeIf(K u, K v, FT ft) {
+    if (!hasVertex(u) || !hasVertex(v)) return;
+    if (ft(u)) edges[u].remove(v);
   }
 
   /**
@@ -316,8 +343,8 @@ class DiGraph {
    * @note This operation is lazy.
    */
   inline void removeEdge(K u, K v) {
-    if (!hasVertex(u) || !hasVertex(v)) return;
-    edges[u].remove(v);
+    auto ft = [](K u) { return true; };
+    removeEdgeIf(u, v, ft);
   }
 
   /**

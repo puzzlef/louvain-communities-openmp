@@ -39,10 +39,6 @@ inline void addVerticesU(G& a, K u, K U, V d=V()) {
 // --------
 // Add an edge (in parallel).
 
-template <class G, class K, class E, class FT>
-inline void addEdgeU(G &a, K u, K v, E w, FT ft) {
-  a.addEdge(u, v, w, ft);
-}
 template <class G, class K, class E=typename G::edge_value_type>
 inline void addEdgeU(G& a, K u, K v, E w=E()) {
   a.addEdge(u, v, w);
@@ -53,7 +49,7 @@ inline void addEdgeU(G& a, K u, K v, E w=E()) {
 template <class G, class K, class E=typename G::edge_value_type>
 inline void addEdgeOmpU(G& a, K u, K v, E w=E()) {
   auto ft = [](K u) { return belongsOmp(u); };
-  a.addEdge(u, v, w, ft);
+  a.addEdgeIf(u, v, w, ft);
 }
 #endif
 
@@ -64,21 +60,16 @@ inline void addEdgeOmpU(G& a, K u, K v, E w=E()) {
 // -----------
 // Remove an edge (in parallel).
 
-template <class G, class K, class FT>
-inline void removeEdgeU(G &a, K u, K v, FT ft) {
-  a.removeEdge(u, v, ft);
-}
 template <class G, class K>
 inline void removeEdgeU(G& a, K u, K v) {
   a.removeEdge(u, v);
 }
 
-
 #ifdef OPENMP
 template <class G, class K>
 inline void removeEdgeOmpU(G& a, K u, K v) {
   auto ft = [](K u) { return belongsOmp(u); };
-  a.removeEdge(u, v, ft);
+  a.removeEdgeIf(u, v, ft);
 }
 #endif
 
