@@ -291,6 +291,7 @@ class LazyBitset {
    * Remove the entry with given key.
    * @param k key
    * @param buf buffer for unprocessed insertions
+   * @note This operation is lazy.
    */
   inline void remove(K k, vector<pair<K, V>> *buf=nullptr) {
     if (unprocessed > 0) updateAdd(buf);
@@ -302,6 +303,7 @@ class LazyBitset {
    * Add the entry with given key.
    * @param k key
    * @param v value
+   * @note This operation is lazy.
    */
   inline void add(K k, V v=V()) {
     if (unprocessed < 0) updateRemove();
