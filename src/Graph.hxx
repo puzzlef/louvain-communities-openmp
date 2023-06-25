@@ -100,8 +100,8 @@ class DiGraph {
    * Iterate over the vertices in the graph.
    * @param fp process function (vertex id, vertex data)
    */
-  template <class F>
-  inline void forEachVertex(F fp) const noexcept {
+  template <class FP>
+  inline void forEachVertex(FP fp) const noexcept {
     for (K u=0; u<span(); ++u)
       if (exists[u]) fp(u, values[u]);
   }
@@ -110,8 +110,8 @@ class DiGraph {
    * Iterate over the vertex ids in the graph.
    * @param fp process function (vertex id)
    */
-  template <class F>
-  inline void forEachVertexKey(F fp) const noexcept {
+  template <class FP>
+  inline void forEachVertexKey(FP fp) const noexcept {
     for (K u=0; u<span(); ++u)
       if (exists[u]) fp(u);
   }
@@ -121,8 +121,8 @@ class DiGraph {
    * @param u source vertex id
    * @param fp process function (target vertex id, edge weight)
    */
-  template <class F>
-  inline void forEachEdge(K u, F fp) const noexcept {
+  template <class FP>
+  inline void forEachEdge(K u, FP fp) const noexcept {
     edges[u].forEach(fp);
   }
 
@@ -131,8 +131,8 @@ class DiGraph {
    * @param u source vertex id
    * @param fp process function (target vertex id)
    */
-  template <class F>
-  inline void forEachEdgeKey(K u, F fp) const noexcept {
+  template <class FP>
+  inline void forEachEdgeKey(K u, FP fp) const noexcept {
     edges[u].forEachKey(fp);
   }
   #pragma endregion
@@ -298,7 +298,6 @@ class DiGraph {
 
   /**
    * Add an outgoing edge to the graph if a condition is met.
-   * @tparam FT condition on the source vertex
    * @param u source vertex id
    * @param v target vertex id
    * @param w associated weight of the edge
@@ -325,7 +324,6 @@ class DiGraph {
 
   /**
    * Remove an outgoing edge from the graph if a condition is met.
-   * @tparam FT condition on the source vertex
    * @param u source vertex id
    * @param v target vertex id
    * @param ft test function (source vertex id)
@@ -454,8 +452,8 @@ class DiGraphCsr {
    * Iterate over the vertices in the graph.
    * @param fp process function (vertex id, vertex data)
    */
-  template <class F>
-  inline void forEachVertex(F fp) const noexcept {
+  template <class FP>
+  inline void forEachVertex(FP fp) const noexcept {
     for (K u=0; u<span(); ++u)
       fp(u, values[u]);
   }
@@ -464,8 +462,8 @@ class DiGraphCsr {
    * Iterate over the vertex ids in the graph.
    * @param fp process function (vertex id)
    */
-  template <class F>
-  inline void forEachVertexKey(F fp) const noexcept {
+  template <class FP>
+  inline void forEachVertexKey(FP fp) const noexcept {
     for (K u=0; u<span(); ++u)
       fp(u);
   }
@@ -475,8 +473,8 @@ class DiGraphCsr {
    * @param u source vertex id
    * @param fp process function (target vertex id, edge weight)
    */
-  template <class F>
-  inline void forEachEdge(K u, F fp) const noexcept {
+  template <class FP>
+  inline void forEachEdge(K u, FP fp) const noexcept {
     size_t i = offsets[u];
     size_t d = degrees[u];
     for (size_t I=i+d; i<I; ++i)
@@ -488,8 +486,8 @@ class DiGraphCsr {
    * @param u source vertex id
    * @param fp process function (target vertex id)
    */
-  template <class F>
-  inline void forEachEdgeKey(K u, F fp) const noexcept {
+  template <class FP>
+  inline void forEachEdgeKey(K u, FP fp) const noexcept {
     size_t i = offsets[u];
     size_t d = degrees[u];
     for (size_t I=i+d; i<I; ++i)
@@ -593,6 +591,20 @@ class DiGraphCsr {
     if (o == size_t(-1)) return false;
     edgeValues[o] = w;
     return true;
+  }
+  #pragma endregion
+
+
+  #pragma region UPDATE
+  public:
+  /**
+   * Adjust the span of the graph (or the number of vertices).
+   * @param n new span
+   */
+  inline void respan(size_t n) {
+    offsets.resize(n+1);
+    degrees.resize(n);
+    values.resize(n);
   }
   #pragma endregion
   #pragma endregion

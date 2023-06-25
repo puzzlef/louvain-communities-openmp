@@ -6,6 +6,7 @@
 #include "Graph.hxx"
 #include "duplicate.hxx"
 #include "properties.hxx"
+#include "csr.hxx"
 #include "modularity.hxx"
 
 #ifdef OPENMP
@@ -16,6 +17,7 @@ using std::pair;
 using std::vector;
 using std::make_pair;
 using std::move;
+using std::swap;
 using std::min;
 using std::max;
 
@@ -110,7 +112,7 @@ inline void louvainFreeHashtablesW(vector<vector<K>*>& vcs, vector<vector<W>*>& 
 
 /**
  * Find the total edge weight of each vertex.
- * @param vtot total edge weight of each vertex (updated, should be initialized to 0)
+ * @param vtot total edge weight of each vertex (updated, must be initialized)
  * @param x original graph
  */
 template <class G, class W>
@@ -138,7 +140,7 @@ inline void louvainVertexWeightsOmpW(vector<W>& vtot, const G& x) {
 
 /**
  * Find the total edge weight of each community.
- * @param ctot total edge weight of each community (updated, should be initialized to 0)
+ * @param ctot total edge weight of each community (updated, must be initialized)
  * @param x original graph
  * @param vcom community each vertex belongs to
  * @param vtot total edge weight of each vertex
@@ -168,8 +170,8 @@ inline void louvainCommunityWeightsOmpW(vector<W>& ctot, const G& x, const vecto
 
 /**
  * Initialize communities such that each vertex is its own community.
- * @param vcom community each vertex belongs to (updated, should be initialized to 0)
- * @param ctot total edge weight of each community (updated, should be initilized to 0)
+ * @param vcom community each vertex belongs to (updated, must be initialized)
+ * @param ctot total edge weight of each community (updated, must be initialized)
  * @param x original graph
  * @param vtot total edge weight of each vertex
  */
@@ -197,8 +199,8 @@ inline void louvainInitializeOmpW(vector<K>& vcom, vector<W>& ctot, const G& x, 
 
 /**
  * Initialize communities from given initial communities.
- * @param vcom community each vertex belongs to (updated, should be initialized to 0)
- * @param ctot total edge weight of each community (updated, should be initilized to 0)
+ * @param vcom community each vertex belongs to (updated, must be initialized)
+ * @param ctot total edge weight of each community (updated, must be initialized)
  * @param x original graph
  * @param vtot total edge weight of each vertex
  * @param q initial community each vertex belongs to
@@ -224,127 +226,6 @@ inline void louvainInitializeFromOmpW(vector<K>& vcom, vector<W>& ctot, const G&
     #pragma omp atomic
     ctot[c] += vtot[u];
   }
-}
-#endif
-
-
-
-
-// LOUVAIN COMMUNITY VERTICES
-// --------------------------
-
-/**
- * Find the number of vertices in each community.
- * @param a number of vertices belonging to each community (updated)
- * @param x original graph
- * @param vcom community each vertex belongs to
- * @returns number of communities
- */
-template <class G, class K>
-inline size_t louvainCountCommunityVerticesW(K *a, const G& x, const K *vcom) {
-  size_t S = x.span();
-  size_t n = 0;
-  fillValueU(a, S, K());
-  x.forEachVertexKey([&](auto u) {
-    K c = vcom[u];
-    if (a[c]==0) ++n;
-    ++a[c];
-  });
-  return n;
-}
-template <class G, class K>
-inline size_t louvainCountCommunityVerticesW(vector<K>& a, const G& x, const vector<K>& vcom) {
-  return louvainCountCommunityVerticesW(a.data(), x, vcom.data());
-}
-
-
-#ifdef OPENMP
-template <class G, class K>
-inline size_t louvainCountCommunityVerticesOmpW(K *a, const G& x, const K *vcom) {
-  size_t S = x.span();
-  size_t n = 0;
-  fillValueOmpU(a, S, K());
-  #pragma omp parallel for schedule(static, 2048) reduction(+:n)
-  for (K u=0; u<S; ++u) {
-    if (!x.hasVertex(u)) continue;
-    K c = vcom[u], m = 0;
-    #pragma omp atomic capture
-    { m = a[c]; ++a[c]; }
-    if (m==0) ++n;
-  }
-  return n;
-}
-template <class G, class K>
-inline size_t louvainCountCommunityVerticesOmpW(vector<K>& a, const G& x, const vector<K>& vcom) {
-  return louvainCountCommunityVerticesOmpW(a.data(), x, vcom.data());
-}
-#endif
-
-
-
-
-/**
- * Find the vertices in each community.
- * @param co csr offsets for vertices belonging to each community (updated)
- * @param ce csr data vertices belonging to each community (updated)
- * @param cn number of vertices in each community (updated)
- * @param x original graph
- * @param vcom community each vertex belongs to
- */
-template <class G, class K>
-inline void louvainCommunityVerticesW(vector<K>& co, vector<K>& ce, vector<K>& cn, const G& x, const vector<K>& vcom) {
-  size_t S = x.span();
-  co[S] = exclusiveScanW(co, cn);
-  fillValueU(cn, K());
-  x.forEachVertexKey([&](auto u) {
-    K c = vcom[u];
-    K i = cn[c]++;
-    ce[co[c] + i] = u;
-  });
-}
-
-
-#ifdef OPENMP
-template <class G, class K>
-inline void louvainCommunityVerticesOmpW(vector<K>& co, vector<K>& ce, vector<K>& cn, vector<K>& bufk, const G& x, const vector<K>& vcom) {
-  size_t S = x.span();
-  co[S] = exclusiveScanOmpW(co, bufk, cn);
-  fillValueOmpU(cn, K());
-  #pragma omp parallel for schedule(static, 2048)
-  for (K u=0; u<S; ++u) {
-    if (!x.hasVertex(u)) continue;
-    K c = vcom[u], i = 0;
-    #pragma omp atomic capture
-    { i = cn[c]; ++cn[c]; }
-    ce[co[c] + i] = u;
-  }
-}
-#endif
-
-
-
-
-// LOUVAIN LOOKUP COMMUNITIES
-// --------------------------
-
-/**
- * Update community membership in a tree-like fashion (to handle aggregation).
- * @param a output community each vertex belongs to (updated)
- * @param vcom community each vertex belongs to (at this aggregation level)
- */
-template <class K>
-inline void louvainLookupCommunitiesU(vector<K>& a, const vector<K>& vcom) {
-  for (auto& v : a)
-    v = vcom[v];
-}
-
-#ifdef OPENMP
-template <class K>
-inline void louvainLookupCommunitiesOmpU(vector<K>& a, const vector<K>& vcom) {
-  size_t S = a.size();
-  #pragma omp parallel for schedule(static, 2048)
-  for (size_t u=0; u<S; ++u)
-    a[u] = vcom[a[u]];
 }
 #endif
 
@@ -524,78 +405,288 @@ inline int louvainMoveOmpW(vector<K>& vcom, vector<W>& ctot, vector<B>& vaff, ve
 
 
 
-// LOUVAIN AGGREGATE
-// -----------------
+// LOUVAIN COMMUNITY PROPERTIES
+// ----------------------------
 
 /**
- * Louvain algorithm's community aggregation phase.
- * @param a output graph
- * @param vcs communities vertex u is linked to (temporary buffer, updated)
- * @param vcout total edge weight from vertex u to community C (temporary buffer, updated)
+ * Examine if each community exists.
+ * @param a does each community exist (updated)
  * @param x original graph
  * @param vcom community each vertex belongs to
- * @param co csr offsets for vertices belonging to each community
- * @param ce csr data vertices belonging to each community
+ * @returns number of communities
  */
-template <class G, class K, class W>
-inline void louvainAggregateW(G& a, vector<K>& vcs, vector<W>& vcout, const G& x, const vector<K>& vcom, const vector<K>& co, const vector<K>& ce) {
-  size_t S = x.span();
-  a.respan(S);
-  for (K c=0; c<S; ++c) {
-    K oc = co[c];
-    K nc = co[c+1] - co[c];
-    if (nc==0) continue;
-    louvainClearScanW(vcs, vcout);
-    for (K i=0; i<nc; ++i) {
-      K u = ce[oc+i];
-      louvainScanCommunitiesW<true>(vcs, vcout, x, u, vcom);
-    }
-    // a.reserveEdges(c, vcs.size());
-    a.addVertex(c);
-    for (auto d : vcs)
-      a.addEdge(c, d, vcout[d]);
-  }
-  // Aggregated graph has unique edges, so an update may not be necessary.
-  a.update();
+template <class G, class K, class A>
+inline size_t louvainCommunityExistsW(vector<A>& a, const G& x, const vector<K>& vcom) {
+  size_t C = 0;
+  fillValueU(a, A());
+  x.forEachVertexKey([&](auto u) {
+    K c = vcom[u];
+    if (!a[c]) ++C;
+    a[c] = A(1);
+  });
+  return C;
 }
 
 #ifdef OPENMP
-template <class G, class K, class W>
-inline void louvainAggregateOmpW(G& a, vector<vector<K>*>& vcs, vector<vector<W>*>& vcout, const G& x, const vector<K>& vcom, const vector<K>& co, const vector<K>& ce) {
+template <class G, class K, class A>
+inline size_t louvainCommunityExistsOmpW(vector<A>& a, const G& x, const vector<K>& vcom) {
   size_t S = x.span();
-  a.respan(S);
-  #pragma omp parallel for schedule(dynamic, 2048)
-  for (K c=0; c<S; ++c) {
-    int t = omp_get_thread_num();
-    K oc = co[c];
-    K nc = co[c+1] - co[c];
-    if (nc==0) continue;
-    louvainClearScanW(*vcs[t], *vcout[t]);
-    for (K i=0; i<nc; ++i) {
-      K u = ce[oc+i];
-      louvainScanCommunitiesW<true>(*vcs[t], *vcout[t], x, u, vcom);
-    }
-    // a.reserveEdges(c, (*vcs[t]).size());
-    for (auto d : *vcs[t])
-      a.addEdge(c, d, (*vcout[t])[d]);
+  size_t C = 0;
+  fillValueOmpU(a, A());
+  #pragma omp parallel for schedule(static, 2048) reduction(+:C)
+  for (K u=0; u<S; ++u) {
+    if (!x.hasVertex(u)) continue;
+    K c = vcom[u];
+    A m = A();
+    #pragma omp atomic capture
+    { m = a[c]; a[c] = A(1); }
+    if (!m) ++C;
   }
-  // Aggregated graph has unique edges, so an update may not be necessary.
-  updateOmpU(a);
+  return C;
 }
 #endif
 
 
+
+
+/**
+ * Find the total degree of each community.
+ * @param a total degree of each community (updated)
+ * @param x original graph
+ * @param vcom community each vertex belongs to
+ */
+template <class G, class K, class A>
+inline void louvainCommunityTotalDegreeW(vector<A>& a, const G& x, const vector<K>& vcom) {
+  fillValueU(a, A());
+  x.forEachVertexKey([&](auto u) {
+    K c   = vcom[u];
+    a[c] += x.degree(u);
+  });
+}
+
+#ifdef OPENMP
+template <class G, class K, class A>
+inline void louvainCommunityTotalDegreeOmpW(vector<A>& a, const G& x, const vector<K>& vcom) {
+  size_t S = x.span();
+  fillValueOmpU(a, A());
+  #pragma omp parallel for schedule(static, 2048)
+  for (K u=0; u<S; ++u) {
+    if (!x.hasVertex(u)) continue;
+    K c = vcom[u];
+    #pragma omp atomic
+    a[c] += x.degree(u);
+  }
+}
+#endif
+
+
+
+
+/**
+ * Find the number of vertices in each community.
+ * @param a number of vertices belonging to each community (updated)
+ * @param x original graph
+ * @param vcom community each vertex belongs to
+ */
+template <class G, class K, class A>
+inline void louvainCountCommunityVerticesW(vector<A>& a, const G& x, const vector<K>& vcom) {
+  fillValueU(a, A());
+  x.forEachVertexKey([&](auto u) {
+    K c = vcom[u];
+    ++a[c];
+  });
+}
+
+#ifdef OPENMP
+template <class G, class K, class A>
+inline void louvainCountCommunityVerticesOmpW(vector<A>& a, const G& x, const vector<K>& vcom) {
+  size_t S = x.span();
+  fillValueOmpU(a, A());
+  #pragma omp parallel for schedule(static, 2048)
+  for (K u=0; u<S; ++u) {
+    if (!x.hasVertex(u)) continue;
+    K c = vcom[u];
+    #pragma omp atomic
+    ++a[c];
+  }
+}
+#endif
+
+
+
+
+/**
+ * Find the vertices in each community.
+ * @param coff csr offsets for vertices belonging to each community (updated)
+ * @param cdeg number of vertices in each community (updated)
+ * @param cedg vertices belonging to each community (updated)
+ * @param x original graph
+ * @param vcom community each vertex belongs to
+ */
+template <class G, class K>
+inline void louvainCommunityVerticesW(vector<K>& coff, vector<K>& cdeg, vector<K>& cedg, const G& x, const vector<K>& vcom) {
+  size_t C = coff.size() - 1;
+  louvainCountCommunityVerticesW(coff, x, vcom);
+  coff[C] = exclusiveScanW(coff, coff);
+  fillValueU(cdeg, K());
+  x.forEachVertexKey([&](auto u) {
+    K c = vcom[u];
+    csrAddEdgeU(cdeg, cedg, coff, c, u);
+  });
+}
+
+#ifdef OPENMP
+template <class G, class K>
+inline void louvainCommunityVerticesOmpW(vector<K>& coff, vector<K>& cdeg, vector<K>& cedg, vector<K>& bufk, const G& x, const vector<K>& vcom) {
+  size_t S = x.span();
+  size_t C = coff.size() - 1;
+  louvainCountCommunityVerticesOmpW(coff, x, vcom);
+  coff[C] = exclusiveScanOmpW(coff, bufk, coff);
+  fillValueOmpU(cdeg, K());
+  #pragma omp parallel for schedule(static, 2048)
+  for (K u=0; u<S; ++u) {
+    if (!x.hasVertex(u)) continue;
+    K c = vcom[u];
+    csrAddEdgeOmpU(cdeg, cedg, coff, c, u);
+  }
+}
+#endif
+
+
+
+
+// LOUVAIN LOOKUP COMMUNITIES
+// --------------------------
+
+/**
+ * Update community membership in a tree-like fashion (to handle aggregation).
+ * @param a output community each vertex belongs to (updated)
+ * @param vcom community each vertex belongs to (at this aggregation level)
+ */
+template <class K>
+inline void louvainLookupCommunitiesU(vector<K>& a, const vector<K>& vcom) {
+  for (auto& v : a)
+    v = vcom[v];
+}
+
+#ifdef OPENMP
+template <class K>
+inline void louvainLookupCommunitiesOmpU(vector<K>& a, const vector<K>& vcom) {
+  size_t S = a.size();
+  #pragma omp parallel for schedule(static, 2048)
+  for (size_t u=0; u<S; ++u)
+    a[u] = vcom[a[u]];
+}
+#endif
+
+
+
+
+// LOUVAIN AGGREGATE
+// -----------------
+
+/**
+ * Aggregate outgoing edges of each community.
+ * @param ydeg degree of each community (updated)
+ * @param yedg vertex ids of outgoing edges of each community (updated)
+ * @param ywei weights of outgoing edges of each community (updated)
+ * @param vcs communities vertex u is linked to (temporary buffer, updated)
+ * @param vcout total edge weight from vertex u to community C (temporary buffer, updated)
+ * @param x original graph
+ * @param vcom community each vertex belongs to
+ * @param coff offsets for vertices belonging to each community
+ * @param cedg vertices belonging to each community
+ * @param yoff offsets for vertices belonging to each community
+ */
 template <class G, class K, class W>
-inline auto louvainAggregate(vector<K>& vcs, vector<W>& vcout, const G& x, const vector<K>& vcom, const vector<K>& co, const vector<K>& ce) {
-  G a; louvainAggregateW(a, vcs, vcout, x, vcom, co, ce);
-  return a;
+inline void louvainAggregateEdgesW(vector<K>& ydeg, vector<K>& yedg, vector<W>& ywei, vector<K>& vcs, vector<W>& vcout, const G& x, const vector<K>& vcom, const vector<K>& coff, const vector<K>& cedg, const vector<size_t>& yoff) {
+  size_t C = coff.size() - 1;
+  fillValueU(ydeg, K());
+  for (K c=0; c<C; ++c) {
+    K n = csrDegree(coff, c);
+    if (n==0) continue;
+    louvainClearScanW(vcs, vcout);
+    csrForEachEdgeKey(coff, cedg, c, [&](auto u) {
+      louvainScanCommunitiesW<true>(vcs, vcout, x, u, vcom);
+    });
+    for (auto d : vcs)
+      csrAddEdgeU(ydeg, yedg, ywei, yoff, c, d, vcout[d]);
+  }
 }
 
 #ifdef OPENMP
 template <class G, class K, class W>
-inline auto louvainAggregateOmp(vector<vector<K>*>& vcs, vector<vector<W>*>& vcout, const G& x, const vector<K>& vcom, const vector<K>& co, const vector<K>& ce) {
-  G a; louvainAggregateOmpW(a, vcs, vcout, x, vcom, co, ce);
-  return a;
+inline void louvainAggregateEdgesOmpW(vector<K>& ydeg, vector<K>& yedg, vector<W>& ywei, vector<vector<K>*>& vcs, vector<vector<W>*>& vcout, const G& x, const vector<K>& vcom, const vector<K>& coff, const vector<K>& cedg, const vector<size_t>& yoff) {
+  size_t C = coff.size() - 1;
+  fillValueOmpU(ydeg, K());
+  #pragma omp parallel for schedule(dynamic, 2048)
+  for (K c=0; c<C; ++c) {
+    int t = omp_get_thread_num();
+    K   n = csrDegree(coff, c);
+    if (n==0) continue;
+    louvainClearScanW(*vcs[t], *vcout[t]);
+    csrForEachEdgeKey(coff, cedg, c, [&](auto u) {
+      louvainScanCommunitiesW<true>(*vcs[t], *vcout[t], x, u, vcom);
+    });
+    for (auto d : *vcs[t])
+      csrAddEdgeU(ydeg, yedg, ywei, yoff, c, d, (*vcout[t])[d]);
+  }
+}
+#endif
+
+
+/**
+ * Re-number communities such that they are numbered 0, 1, 2, ...
+ * @param vcom community each vertex belongs to (updated)
+ * @param cext does each community exist (updated)
+ * @param x original graph
+ * @returns number of communities
+ */
+template <class G, class K>
+inline size_t louvainRenumberCommunitiesW(vector<K>& vcom, vector<K>& cext, const G& x) {
+  size_t C = exclusiveScanW(cext, cext);
+  louvainLookupCommunitiesU(vcom, cext);
+  return C;
+}
+
+#ifdef OPENMP
+template <class G, class K>
+inline size_t louvainRenumberCommunitiesOmpW(vector<K>& vcom, vector<K>& cext, vector<K>& bufk, const G& x) {
+  size_t C = exclusiveScanOmpW(cext, bufk, cext);
+  louvainLookupCommunitiesOmpU(vcom, cext);
+  return C;
+}
+#endif
+
+
+/**
+ * Louvain algorithm's community aggregation phase.
+ * @param yoff offsets for vertices belonging to each community (updated)
+ * @param ydeg degree of each community (updated)
+ * @param yedg vertex ids of outgoing edges of each community (updated)
+ * @param ywei weights of outgoing edges of each community (updated)
+ * @param vcs communities vertex u is linked to (temporary buffer, updated)
+ * @param vcout total edge weight from vertex u to community C (temporary buffer, updated)
+ * @param x original graph
+ * @param vcom community each vertex belongs to
+ * @param coff offsets for vertices belonging to each community
+ * @param cedg vertices belonging to each community
+ */
+template <class G, class K, class W>
+inline void louvainAggregateW(vector<size_t>& yoff, vector<K>& ydeg, vector<K>& yedg, vector<W>& ywei, vector<K>& vcs, vector<W>& vcout, const G& x, const vector<K>& vcom, vector<K>& coff, vector<K>& cedg) {
+  size_t C = coff.size() - 1;
+  louvainCommunityTotalDegreeW(yoff, x, vcom);
+  yoff[C] = exclusiveScanW(yoff, yoff);
+  louvainAggregateEdgesW(ydeg, yedg, ywei, vcs, vcout, x, vcom, coff, cedg, yoff);
+}
+
+#ifdef OPENMP
+template <class G, class K, class W>
+inline void louvainAggregateOmpW(vector<size_t>& yoff, vector<K>& ydeg, vector<K>& yedg, vector<W>& ywei, vector<size_t>& bufs, vector<vector<K>*>& vcs, vector<vector<W>*>& vcout, const G& x, const vector<K>& vcom, vector<K>& coff, vector<K>& cedg) {
+  size_t C = coff.size() - 1;
+  louvainCommunityTotalDegreeOmpW(yoff, x, vcom);
+  yoff[C] = exclusiveScanOmpW(yoff, bufs, yoff);
+  louvainAggregateEdgesOmpW(ydeg, yedg, ywei, vcs, vcout, x, vcom, coff, cedg, yoff);
 }
 #endif
 
@@ -622,15 +713,18 @@ auto louvainSeq(const G& x, const vector<K> *q, const LouvainOptions& o, FM fm) 
   int    P = o.maxPasses, p = 0;
   size_t S = x.span(), naff = 0;
   double M = edgeWeight(x)/2;
-  vector<K> vcom(S), vcs, a(S);
-  vector<W> vtot(S), ctot(S), vcout(S);
-  vector<K> co(S+1), ce(S), cn(S);
   vector<B> vaff(S);
+  vector<K> vcom(S), a(S);
+  vector<W> vtot(S), ctot(S);
+  vector<K> vcs;
+  vector<W> vcout(S);
+  DiGraphCsr<K, None, None, K> cv(S, S);
   float tm = 0, tp = 0, tl = 0, ta = 0;
   float t  = measureDurationMarked([&](auto mark) {
     double E  = o.tolerance;
     auto   fc = [&](double el, int l) { return el<=E; };
-    G y; y.respan(S);
+    DiGraphCsr<K, None, W> y(S, x.size());
+    DiGraphCsr<K, None, W> z(S, x.size());
     fillValueU(vcom, K());
     fillValueU(vtot, W());
     fillValueU(ctot, W());
@@ -644,18 +738,32 @@ auto louvainSeq(const G& x, const vector<K> *q, const LouvainOptions& o, FM fm) 
       else   louvainInitializeW(vcom, ctot, x, vtot);
       for (l=0, p=0; M>0 && p<P;) {
         if (p==1) t1 = timeNow();
-        const G& g = p==0? x : y;
+        bool isFirst = p==0;
         int m = 0;
-        tl += measureDuration([&]() { m = louvainMoveW(vcom, ctot, vaff, vcs, vcout, g, vtot, M, R, L, fc); });
-        if (p==0) copyValuesW(a, vcom);
-        else      louvainLookupCommunitiesU(a, vcom);
+        tl += measureDuration([&]() {
+          if (isFirst) m = louvainMoveW(vcom, ctot, vaff, vcs, vcout, x, vtot, M, R, L, fc);
+          else         m = louvainMoveW(vcom, ctot, vaff, vcs, vcout, y, vtot, M, R, L, fc);
+        });
+        if (isFirst) copyValuesW(a, vcom);
+        else         louvainLookupCommunitiesU(a, vcom);
         l += max(m, 1); ++p;
         if (m<=1 || p>=P) break;
-        size_t gn = g.order();
-        size_t yn = louvainCountCommunityVerticesW(cn, g, vcom);
-        if (double(yn)/gn >= o.aggregationTolerance) break;
-        louvainCommunityVerticesW(co, ce, cn, g, vcom);
-        ta += measureDuration([&]() { y = louvainAggregate(vcs, vcout, g, vcom, co, ce); });
+        size_t GN = isFirst? x.order() : y.order();
+        size_t GS = isFirst? x.span()  : y.span();
+        size_t CN = 0;
+        if (isFirst) CN = louvainCommunityExistsW(cv.degrees, x, vcom);
+        else         CN = louvainCommunityExistsW(cv.degrees, y, vcom);
+        if (double(CN)/GN >= o.aggregationTolerance) break;
+        if (isFirst) louvainRenumberCommunitiesW(vcom, cv.degrees, x);
+        else         louvainRenumberCommunitiesW(vcom, cv.degrees, y);
+        cv.respan(CN); z.respan(CN);
+        if (isFirst) louvainCommunityVerticesW(cv.offsets, cv.degrees, cv.edgeKeys, x, vcom);
+        else         louvainCommunityVerticesW(cv.offsets, cv.degrees, cv.edgeKeys, y, vcom);
+        ta += measureDuration([&]() {
+          if (isFirst) louvainAggregateW(z.offsets, z.degrees, z.edgeKeys, z.edgeValues, vcs, vcout, x, vcom, cv.offsets, cv.edgeKeys);
+          else         louvainAggregateW(z.offsets, z.degrees, z.edgeKeys, z.edgeValues, vcs, vcout, y, vcom, cv.offsets, cv.edgeKeys);
+          swap(y, z);
+        });
         fillValueU(vcom, K());
         fillValueU(vtot, W());
         fillValueU(ctot, W());
@@ -682,19 +790,21 @@ auto louvainOmp(const G& x, const vector<K> *q, const LouvainOptions& o, FM fm) 
   size_t S = x.span(), naff = 0;
   double M = edgeWeightOmp(x)/2;
   int    T = omp_get_max_threads();
-  vector<K> bufk(T);
+  vector<B> vaff(S);
   vector<K> vcom(S), a(S);
   vector<W> vtot(S), ctot(S);
-  vector<K> co(S+1), ce(S), cn(S);
-  vector<B> vaff(S);
+  vector<K> bufk(T);
+  vector<size_t> bufs(T);
   vector<vector<K>*> vcs(T);
   vector<vector<W>*> vcout(T);
   louvainAllocateHashtablesW(vcs, vcout, S);
+  DiGraphCsr<K, None, None, K> cv(S, S);
   float tm = 0, tp = 0, tl = 0, ta = 0;
   float t  = measureDurationMarked([&](auto mark) {
     double E  = o.tolerance;
     auto   fc = [&](double el, int l) { return el<=E; };
-    G y; y.respan(S);
+    DiGraphCsr<K, None, W> y(S, x.size());
+    DiGraphCsr<K, None, W> z(S, x.size());
     fillValueOmpU(vcom, K());
     fillValueOmpU(vtot, W());
     fillValueOmpU(ctot, W());
@@ -708,18 +818,32 @@ auto louvainOmp(const G& x, const vector<K> *q, const LouvainOptions& o, FM fm) 
       else   louvainInitializeOmpW(vcom, ctot, x, vtot);
       for (l=0, p=0; M>0 && p<P;) {
         if (p==1) t1 = timeNow();
-        const G& g = p==0? x : y;
+        bool isFirst = p==0;
         int m = 0;
-        tl += measureDuration([&]() { m = louvainMoveOmpW(vcom, ctot, vaff, vcs, vcout, g, vtot, M, R, L, fc); });
-        if (p==0) copyValuesW(a, vcom);
-        else      louvainLookupCommunitiesOmpU(a, vcom);
+        tl += measureDuration([&]() {
+          if (isFirst) m = louvainMoveOmpW(vcom, ctot, vaff, vcs, vcout, x, vtot, M, R, L, fc);
+          else         m = louvainMoveOmpW(vcom, ctot, vaff, vcs, vcout, y, vtot, M, R, L, fc);
+        });
+        if (isFirst) copyValuesOmpW(a, vcom);
+        else         louvainLookupCommunitiesOmpU(a, vcom);
         l += max(m, 1); ++p;
         if (m<=1 || p>=P) break;
-        size_t gn = g.order();
-        size_t yn = louvainCountCommunityVerticesOmpW(cn, g, vcom);
-        if (double(yn)/gn >= o.aggregationTolerance) break;
-        louvainCommunityVerticesOmpW(co, ce, cn, bufk, g, vcom);
-        ta += measureDuration([&]() { y = louvainAggregateOmp(vcs, vcout, g, vcom, co, ce); });
+        size_t GN = isFirst? x.order() : y.order();
+        size_t GS = isFirst? x.span()  : y.span();
+        size_t CN = 0;
+        if (isFirst) CN = louvainCommunityExistsOmpW(cv.degrees, x, vcom);
+        else         CN = louvainCommunityExistsOmpW(cv.degrees, y, vcom);
+        if (double(CN)/GN >= o.aggregationTolerance) break;
+        if (isFirst) louvainRenumberCommunitiesOmpW(vcom, cv.degrees, bufk, x);
+        else         louvainRenumberCommunitiesOmpW(vcom, cv.degrees, bufk, y);
+        cv.respan(CN); z.respan(CN);
+        if (isFirst) louvainCommunityVerticesOmpW(cv.offsets, cv.degrees, cv.edgeKeys, bufk, x, vcom);
+        else         louvainCommunityVerticesOmpW(cv.offsets, cv.degrees, cv.edgeKeys, bufk, y, vcom);
+        ta += measureDuration([&]() {
+          if (isFirst) louvainAggregateOmpW(z.offsets, z.degrees, z.edgeKeys, z.edgeValues, bufs, vcs, vcout, x, vcom, cv.offsets, cv.edgeKeys);
+          else         louvainAggregateOmpW(z.offsets, z.degrees, z.edgeKeys, z.edgeValues, bufs, vcs, vcout, y, vcom, cv.offsets, cv.edgeKeys);
+          swap(y, z);
+        });
         fillValueOmpU(vcom, K());
         fillValueOmpU(vtot, W());
         fillValueOmpU(ctot, W());
