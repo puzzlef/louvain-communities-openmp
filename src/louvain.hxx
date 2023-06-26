@@ -798,17 +798,20 @@ auto louvainOmp(const G& x, const vector<K> *q, const LouvainOptions& o, FM fm) 
   vector<vector<K>*> vcs(T);
   vector<vector<W>*> vcout(T);
   louvainAllocateHashtablesW(vcs, vcout, S);
+  DiGraphCsr<K, None, None, K> cv(S, S);
+  DiGraphCsr<K, None, W> y(S, x.size());
+  DiGraphCsr<K, None, W> z(S, x.size());
   float tm = 0, tp = 0, tl = 0, ta = 0;
   float t  = measureDurationMarked([&](auto mark) {
     double E  = o.tolerance;
     auto   fc = [&](double el, int l) { return el<=E; };
-    DiGraphCsr<K, None, None, K> cv(S, S);
-    DiGraphCsr<K, None, W> y(S, x.size());
-    DiGraphCsr<K, None, W> z(S, x.size());
     fillValueOmpU(vcom, K());
     fillValueOmpU(vtot, W());
     fillValueOmpU(ctot, W());
     fillValueOmpU(a, K());
+    cv.respan(S);
+    y .respan(S);
+    z .respan(S);
     mark([&]() {
       tm += measureDuration([&]() { fm(vaff); });
       naff = sumValuesOmp(vaff, size_t());
@@ -842,8 +845,8 @@ auto louvainOmp(const G& x, const vector<K> *q, const LouvainOptions& o, FM fm) 
         ta += measureDuration([&]() {
           if (isFirst) louvainAggregateOmpW(z.offsets, z.degrees, z.edgeKeys, z.edgeValues, bufs, vcs, vcout, x, vcom, cv.offsets, cv.edgeKeys);
           else         louvainAggregateOmpW(z.offsets, z.degrees, z.edgeKeys, z.edgeValues, bufs, vcs, vcout, y, vcom, cv.offsets, cv.edgeKeys);
-          swap(y, z);
         });
+        swap(y, z);
         fillValueOmpU(vcom, K());
         fillValueOmpU(vtot, W());
         fillValueOmpU(ctot, W());
