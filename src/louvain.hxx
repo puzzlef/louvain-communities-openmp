@@ -798,11 +798,11 @@ auto louvainOmp(const G& x, const vector<K> *q, const LouvainOptions& o, FM fm) 
   vector<vector<K>*> vcs(T);
   vector<vector<W>*> vcout(T);
   louvainAllocateHashtablesW(vcs, vcout, S);
-  DiGraphCsr<K, None, None, K> cv(S, S);
   float tm = 0, tp = 0, tl = 0, ta = 0;
   float t  = measureDurationMarked([&](auto mark) {
     double E  = o.tolerance;
     auto   fc = [&](double el, int l) { return el<=E; };
+    DiGraphCsr<K, None, None, K> cv(S, S);
     DiGraphCsr<K, None, W> y(S, x.size());
     DiGraphCsr<K, None, W> z(S, x.size());
     fillValueOmpU(vcom, K());
