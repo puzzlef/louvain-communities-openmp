@@ -135,9 +135,16 @@ template <class G, class FC>
 inline double modularityByOmp(const G& x, FC fc, double M, double R=1) {
   size_t S = x.span();
   int    T = omp_get_max_threads();
-  vector2d<double> cin (T, vector<double>(S));
-  vector2d<double> ctot(T, vector<double>(S));
-  return modularityByOmpW(cin, ctot, x, fc, M, R);
+  // Limit memory usage to 64GB.
+  size_t VALUES = 64ULL*1024*1024*1024 / 8;
+  int    TADJ   = int(max(VALUES / (2*S), size_t(1)));
+  vector2d<double> cin (TADJ, vector<double>(S));
+  vector2d<double> ctot(TADJ, vector<double>(S));
+  // Run in parallel with limited threads
+  omp_set_num_threads(TADJ);
+  double Q = modularityByOmpW(cin, ctot, x, fc, M, R);
+  omp_set_num_threads(T);
+  return Q;
 }
 #endif
 
