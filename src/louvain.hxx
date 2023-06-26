@@ -527,7 +527,7 @@ template <class G, class K>
 inline void louvainCommunityVerticesW(vector<K>& coff, vector<K>& cdeg, vector<K>& cedg, const G& x, const vector<K>& vcom) {
   size_t C = coff.size() - 1;
   louvainCountCommunityVerticesW(coff, x, vcom);
-  coff[C] = exclusiveScanW(coff, coff);
+  coff[C] = exclusiveScanW(coff.data(), coff.data(), C);
   fillValueU(cdeg, K());
   x.forEachVertexKey([&](auto u) {
     K c = vcom[u];
@@ -541,7 +541,7 @@ inline void louvainCommunityVerticesOmpW(vector<K>& coff, vector<K>& cdeg, vecto
   size_t S = x.span();
   size_t C = coff.size() - 1;
   louvainCountCommunityVerticesOmpW(coff, x, vcom);
-  coff[C] = exclusiveScanOmpW(coff, bufk, coff);
+  coff[C] = exclusiveScanOmpW(coff.data(), bufk.data(), coff.data(), C);
   fillValueOmpU(cdeg, K());
   #pragma omp parallel for schedule(static, 2048)
   for (K u=0; u<S; ++u) {
@@ -676,7 +676,7 @@ template <class G, class K, class W>
 inline void louvainAggregateW(vector<size_t>& yoff, vector<K>& ydeg, vector<K>& yedg, vector<W>& ywei, vector<K>& vcs, vector<W>& vcout, const G& x, const vector<K>& vcom, vector<K>& coff, vector<K>& cedg) {
   size_t C = coff.size() - 1;
   louvainCommunityTotalDegreeW(yoff, x, vcom);
-  yoff[C] = exclusiveScanW(yoff, yoff);
+  yoff[C] = exclusiveScanW(yoff.data(), yoff.data(), C);
   louvainAggregateEdgesW(ydeg, yedg, ywei, vcs, vcout, x, vcom, coff, cedg, yoff);
 }
 
@@ -685,7 +685,7 @@ template <class G, class K, class W>
 inline void louvainAggregateOmpW(vector<size_t>& yoff, vector<K>& ydeg, vector<K>& yedg, vector<W>& ywei, vector<size_t>& bufs, vector<vector<K>*>& vcs, vector<vector<W>*>& vcout, const G& x, const vector<K>& vcom, vector<K>& coff, vector<K>& cedg) {
   size_t C = coff.size() - 1;
   louvainCommunityTotalDegreeOmpW(yoff, x, vcom);
-  yoff[C] = exclusiveScanOmpW(yoff, bufs, yoff);
+  yoff[C] = exclusiveScanOmpW(yoff.data(), bufs.data(), yoff.data(), C);
   louvainAggregateEdgesOmpW(ydeg, yedg, ywei, vcs, vcout, x, vcom, coff, cedg, yoff);
 }
 #endif
