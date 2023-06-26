@@ -711,6 +711,7 @@ auto louvainSeq(const G& x, const vector<K> *q, const LouvainOptions& o, FM fm) 
   double R = o.resolution;
   int    L = o.maxIterations, l = 0;
   int    P = o.maxPasses, p = 0;
+  size_t X = x.size();
   size_t S = x.span(), naff = 0;
   double M = edgeWeight(x)/2;
   vector<B> vaff(S);
@@ -718,9 +719,11 @@ auto louvainSeq(const G& x, const vector<K> *q, const LouvainOptions& o, FM fm) 
   vector<W> vtot(S), ctot(S);
   vector<K> vcs;
   vector<W> vcout(S);
+  size_t Z = max(size_t(o.aggregationTolerance * X), X);
+  size_t Y = max(size_t(o.aggregationTolerance * Z), Z);
   DiGraphCsr<K, None, None, K> cv(S, S);
-  DiGraphCsr<K, None, W> y(S, x.size());
-  DiGraphCsr<K, None, W> z(S, x.size());
+  DiGraphCsr<K, None, W> y(S, Y);  // y(S, X)
+  DiGraphCsr<K, None, W> z(S, Z);  // z(S, X)
   float tm = 0, tp = 0, tl = 0, ta = 0;
   float t  = measureDurationMarked([&](auto mark) {
     double E  = o.tolerance;
@@ -792,6 +795,7 @@ auto louvainOmp(const G& x, const vector<K> *q, const LouvainOptions& o, FM fm) 
   double R = o.resolution;
   int    L = o.maxIterations, l = 0;
   int    P = o.maxPasses, p = 0;
+  size_t X = x.size();
   size_t S = x.span(), naff = 0;
   double M = edgeWeightOmp(x)/2;
   int    T = omp_get_max_threads();
@@ -803,9 +807,11 @@ auto louvainOmp(const G& x, const vector<K> *q, const LouvainOptions& o, FM fm) 
   vector<vector<K>*> vcs(T);
   vector<vector<W>*> vcout(T);
   louvainAllocateHashtablesW(vcs, vcout, S);
+  size_t Z = max(size_t(o.aggregationTolerance * X), X);
+  size_t Y = max(size_t(o.aggregationTolerance * Z), Z);
   DiGraphCsr<K, None, None, K> cv(S, S);
-  DiGraphCsr<K, None, W> y(S, x.size());
-  DiGraphCsr<K, None, W> z(S, x.size());
+  DiGraphCsr<K, None, W> y(S, Y);  // y(S, X)
+  DiGraphCsr<K, None, W> z(S, Z);  // z(S, X)
   float tm = 0, tp = 0, tl = 0, ta = 0;
   float t  = measureDurationMarked([&](auto mark) {
     double E  = o.tolerance;
