@@ -13,3 +13,4 @@
 #include "modularity.hxx"
 #include "random.hxx"
 #include "louvain.hxx"
+#include "louvainCsrless.hxx"
