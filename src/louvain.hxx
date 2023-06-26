@@ -816,7 +816,7 @@ auto louvainOmp(const G& x, const vector<K> *q, const LouvainOptions& o, FM fm) 
       louvainVertexWeightsOmpW(vtot, x);
       if (q) louvainInitializeFromOmpW(vcom, ctot, x, vtot, *q);
       else   louvainInitializeOmpW(vcom, ctot, x, vtot);
-      for (l=0, p=0; M>0 && p<P;) {
+      for (l=0, p=0; M>0 && P>0;) {
         if (p==1) t1 = timeNow();
         bool isFirst = p==0;
         int m = 0;
@@ -824,8 +824,6 @@ auto louvainOmp(const G& x, const vector<K> *q, const LouvainOptions& o, FM fm) 
           if (isFirst) m = louvainMoveOmpW(vcom, ctot, vaff, vcs, vcout, x, vtot, M, R, L, fc);
           else         m = louvainMoveOmpW(vcom, ctot, vaff, vcs, vcout, y, vtot, M, R, L, fc);
         });
-        if (isFirst) copyValuesOmpW(a, vcom);
-        else         louvainLookupCommunitiesOmpU(a, vcom);
         l += max(m, 1); ++p;
         if (m<=1 || p>=P) break;
         size_t GN = isFirst? x.order() : y.order();
@@ -836,6 +834,8 @@ auto louvainOmp(const G& x, const vector<K> *q, const LouvainOptions& o, FM fm) 
         if (double(CN)/GN >= o.aggregationTolerance) break;
         if (isFirst) louvainRenumberCommunitiesOmpW(vcom, cv.degrees, bufk, x);
         else         louvainRenumberCommunitiesOmpW(vcom, cv.degrees, bufk, y);
+        if (isFirst) copyValuesOmpW(a, vcom);
+        else         louvainLookupCommunitiesOmpU(a, vcom);
         cv.respan(CN); z.respan(CN);
         if (isFirst) louvainCommunityVerticesOmpW(cv.offsets, cv.degrees, cv.edgeKeys, bufk, x, vcom);
         else         louvainCommunityVerticesOmpW(cv.offsets, cv.degrees, cv.edgeKeys, bufk, y, vcom);
@@ -852,6 +852,8 @@ auto louvainOmp(const G& x, const vector<K> *q, const LouvainOptions& o, FM fm) 
         louvainInitializeOmpW(vcom, ctot, y, vtot);
         E /= o.toleranceDecline;
       }
+      if (p<=1) copyValuesOmpW(a, vcom);
+      else      louvainLookupCommunitiesOmpU(a, vcom);
       if (p<=1) t1 = timeNow();
       tp += duration(t0, t1);
     });
