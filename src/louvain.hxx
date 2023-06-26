@@ -719,16 +719,19 @@ auto louvainSeq(const G& x, const vector<K> *q, const LouvainOptions& o, FM fm) 
   vector<K> vcs;
   vector<W> vcout(S);
   DiGraphCsr<K, None, None, K> cv(S, S);
+  DiGraphCsr<K, None, W> y(S, x.size());
+  DiGraphCsr<K, None, W> z(S, x.size());
   float tm = 0, tp = 0, tl = 0, ta = 0;
   float t  = measureDurationMarked([&](auto mark) {
     double E  = o.tolerance;
     auto   fc = [&](double el, int l) { return el<=E; };
-    DiGraphCsr<K, None, W> y(S, x.size());
-    DiGraphCsr<K, None, W> z(S, x.size());
     fillValueU(vcom, K());
     fillValueU(vtot, W());
     fillValueU(ctot, W());
     fillValueU(a, K());
+    cv.respan(S);
+    y .respan(S);
+    z .respan(S);
     mark([&]() {
       tm += measureDuration([&]() { fm(vaff); });
       naff = sumValues(vaff, size_t());
@@ -736,7 +739,7 @@ auto louvainSeq(const G& x, const vector<K> *q, const LouvainOptions& o, FM fm) 
       louvainVertexWeightsW(vtot, x);
       if (q) louvainInitializeFromW(vcom, ctot, x, vtot, *q);
       else   louvainInitializeW(vcom, ctot, x, vtot);
-      for (l=0, p=0; M>0 && p<P;) {
+      for (l=0, p=0; M>0 && P>0;) {
         if (p==1) t1 = timeNow();
         bool isFirst = p==0;
         int m = 0;
@@ -744,8 +747,6 @@ auto louvainSeq(const G& x, const vector<K> *q, const LouvainOptions& o, FM fm) 
           if (isFirst) m = louvainMoveW(vcom, ctot, vaff, vcs, vcout, x, vtot, M, R, L, fc);
           else         m = louvainMoveW(vcom, ctot, vaff, vcs, vcout, y, vtot, M, R, L, fc);
         });
-        if (isFirst) copyValuesW(a, vcom);
-        else         louvainLookupCommunitiesU(a, vcom);
         l += max(m, 1); ++p;
         if (m<=1 || p>=P) break;
         size_t GN = isFirst? x.order() : y.order();
@@ -756,14 +757,16 @@ auto louvainSeq(const G& x, const vector<K> *q, const LouvainOptions& o, FM fm) 
         if (double(CN)/GN >= o.aggregationTolerance) break;
         if (isFirst) louvainRenumberCommunitiesW(vcom, cv.degrees, x);
         else         louvainRenumberCommunitiesW(vcom, cv.degrees, y);
+        if (isFirst) copyValuesW(a, vcom);
+        else         louvainLookupCommunitiesU(a, vcom);
         cv.respan(CN); z.respan(CN);
         if (isFirst) louvainCommunityVerticesW(cv.offsets, cv.degrees, cv.edgeKeys, x, vcom);
         else         louvainCommunityVerticesW(cv.offsets, cv.degrees, cv.edgeKeys, y, vcom);
         ta += measureDuration([&]() {
           if (isFirst) louvainAggregateW(z.offsets, z.degrees, z.edgeKeys, z.edgeValues, vcs, vcout, x, vcom, cv.offsets, cv.edgeKeys);
           else         louvainAggregateW(z.offsets, z.degrees, z.edgeKeys, z.edgeValues, vcs, vcout, y, vcom, cv.offsets, cv.edgeKeys);
-          swap(y, z);
         });
+        swap(y, z);
         fillValueU(vcom, K());
         fillValueU(vtot, W());
         fillValueU(ctot, W());
@@ -772,6 +775,8 @@ auto louvainSeq(const G& x, const vector<K> *q, const LouvainOptions& o, FM fm) 
         louvainInitializeW(vcom, ctot, y, vtot);
         E /= o.toleranceDecline;
       }
+      if (p<=1) copyValuesW(a, vcom);
+      else      louvainLookupCommunitiesU(a, vcom);
       if (p<=1) t1 = timeNow();
       tp += duration(t0, t1);
     });
