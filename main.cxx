@@ -61,8 +61,14 @@ void runExperiment(const G& x) {
     );
   };
   // Find static Louvain.
-  auto b1 = louvainStaticOmp(x, init, {repeat});
-  flog(b1, "louvainStaticOmp");
+  auto b1 = louvainStaticOmp(x, init, {repeat, 1.0, 1e-2, 0.8, 1, 20, 10});
+  flog(b1, "louvainStaticOmpDrop1");
+  auto b2 = louvainStaticOmp(x, init, {repeat, 1.0, 1e-2, 0.8, 10, 20, 10});
+  flog(b2, "louvainStaticOmpDrop10");
+  auto b3 = louvainStaticOmp(x, init, {repeat, 1.0, 1e-2, 0.8, 100, 20, 10});
+  flog(b3, "louvainStaticOmpDrop100");
+  auto b4 = louvainStaticOmp(x, init, {repeat, 1.0, 1e-2, 0.8, 1000, 20, 10});
+  flog(b4, "louvainStaticOmpDrop1000");
 }
 
 
