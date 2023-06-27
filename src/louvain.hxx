@@ -32,12 +32,12 @@ struct LouvainOptions {
   double resolution;
   double tolerance;
   double aggregationTolerance;
-  double toleranceDecline;
+  double toleranceDrop;
   int    maxIterations;
   int    maxPasses;
 
-  LouvainOptions(int repeat=1, double resolution=1, double tolerance=1e-2, double aggregationTolerance=0.8, double toleranceDecline=100, int maxIterations=20, int maxPasses=10) :
-  repeat(repeat), resolution(resolution), tolerance(tolerance), aggregationTolerance(aggregationTolerance), toleranceDecline(toleranceDecline), maxIterations(maxIterations), maxPasses(maxPasses) {}
+  LouvainOptions(int repeat=1, double resolution=1, double tolerance=1e-2, double aggregationTolerance=0.8, double toleranceDrop=10, int maxIterations=20, int maxPasses=10) :
+  repeat(repeat), resolution(resolution), tolerance(tolerance), aggregationTolerance(aggregationTolerance), toleranceDrop(toleranceDrop), maxIterations(maxIterations), maxPasses(maxPasses) {}
 };
 
 // Weight to be using in hashtable.
@@ -776,7 +776,7 @@ auto louvainSeq(const G& x, const vector<K> *q, const LouvainOptions& o, FM fm) 
         fillValueU(vaff.data(), CN, B(1));
         louvainVertexWeightsW(vtot, y);
         louvainInitializeW(vcom, ctot, y, vtot);
-        E /= o.toleranceDecline;
+        E /= o.toleranceDrop;
       }
       if (p<=1) copyValuesW(a, vcom);
       else      louvainLookupCommunitiesU(a, vcom);
@@ -864,7 +864,7 @@ auto louvainOmp(const G& x, const vector<K> *q, const LouvainOptions& o, FM fm) 
         fillValueOmpU(vaff.data(), CN, B(1));
         louvainVertexWeightsOmpW(vtot, y);
         louvainInitializeOmpW(vcom, ctot, y, vtot);
-        E /= o.toleranceDecline;
+        E /= o.toleranceDrop;
       }
       if (p<=1) copyValuesOmpW(a, vcom);
       else      louvainLookupCommunitiesOmpU(a, vcom);
