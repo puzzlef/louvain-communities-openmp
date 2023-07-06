@@ -19,8 +19,9 @@ using std::vector;
 
 template <class G, class K, class V, class FT>
 inline void addVerticesIfU(G& a, K u, K U, V d, FT ft) {
+  size_t S = a.span();
   if (U<=1) return;
-  a.respan(U);
+  if (S<U) a.respan(U);
   for (; u<U; ++u)
     if (ft(u, d)) a.addVertex(u, d);
 }

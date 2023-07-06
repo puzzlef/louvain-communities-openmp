@@ -57,7 +57,7 @@ inline void readMtxHeader(istream& s, bool& symmetric, size_t& rows, size_t& col
 }
 inline void readMtxHeader(const char* pth, bool& symmetric, size_t& rows, size_t& cols, size_t& size) {
   ifstream s(pth);
-  return readMtxHeader(s, symmetric, rows, cols, size);
+  readMtxHeader(s, symmetric, rows, cols, size);
 }
 
 
@@ -342,5 +342,254 @@ template <class G>
 inline void readMtxOmpW(G& a, const char *pth, bool weighted=false) {
   ifstream s(pth);
   readMtxOmpW(a, s, weighted);
+}
+#endif
+
+
+
+
+// READ EDGELIST HEADER
+// --------------------
+// Read header of EDGELIST file.
+
+/**
+ * Read header of EDGELIST file.
+ * @param s input stream
+ * @param nodes number of nodes (updated)
+ * @param edges number of edges (updated)
+ * @returns following line
+ */
+inline string readEdgelistHeader(istream& s, size_t& nodes, size_t& edges) {
+  string line, h0, h1, h2;
+  nodes = size_t(-1);
+  edges = size_t(-1);
+  while (getline(s, line)) {
+    if (line.find('#')!=0) break;
+    if (line.find("Nodes:")==size_t(-1)) continue;
+    if (line.find("Edges:")==size_t(-1)) continue;
+    istringstream sline(line);
+    sline >> h0 >> h1 >> nodes >> h2 >> edges;
+  }
+  return line;
+}
+inline string readEdgelistHeader(const char* pth, size_t& nodes, size_t& edges) {
+  ifstream s(pth);
+  return readEdgelistHeader(s, nodes, edges);
+}
+
+
+/**
+ * Read order of graph in EDGELIST file.
+ * @param s input stream
+ * @returns number of vertices (0-N?)
+ */
+inline size_t readEdgelistOrder(istream& s) {
+  size_t nodes, edges;
+  readEdgelistHeader(s, nodes, edges);
+  return nodes;
+}
+inline size_t readEdgelistOrder(const char* pth) {
+  ifstream s(pth);
+  return readEdgelistOrder(s);
+}
+
+
+/**
+ * Read size of graph in EDGELIST file.
+ * @param s input stream
+ * @returns number of edges
+ */
+inline size_t readEdgelistSize(istream& s) {
+  size_t nodes, edges;
+  readEdgelistHeader(s, nodes, edges);
+  return edges;
+}
+inline size_t readEdgelistSize(const char* pth) {
+  ifstream s(pth);
+  return readEdgelistSize(s);
+}
+
+
+/**
+ * Read span of graph in EDGELIST file.
+ * @param s input stream
+ * @returns number of vertices + 1
+ */
+inline size_t readEdgelistSpan(istream& s) {
+  return readEdgelistOrder(s) + 1;
+}
+inline size_t readEdgelistSpan(const char* pth) {
+  ifstream s(pth);
+  return readEdgelistSpan(s);
+}
+
+
+
+
+// READ EDGELIST DO
+// ----------------
+// Read contents of EDGELIST file.
+
+/**
+ * Read contents of EDGELIST file.
+ * @param s input stream
+ * @param weighted is it weighted?
+ * @param symmetric is it symmetric?
+ * @param fh on header (nodes, edges)
+ * @param fb on body line (u, v, w)
+ */
+template <class FH, class FB>
+inline void readEdgelistDo(istream& s, bool weighted, bool symmetric, FH fh, FB fb) {
+  size_t nodes, edges;
+  string line = readEdgelistHeader(s, nodes, edges);
+  fh(nodes, edges);
+  if (nodes==0) return;
+  istringstream sline(line);
+  readMtxBodyDo(sline, weighted, symmetric, fb);
+  readMtxBodyDo(s,     weighted, symmetric, fb);
+}
+template <class FH, class FB>
+inline void readEdgelistDo(const char *pth, bool weighted, bool symmetric, FH fh, FB fb) {
+  ifstream s(pth);
+  readEdgelistDo(s, weighted, symmetric, fh, fb);
+}
+
+
+#ifdef OPENMP
+/**
+ * Read contents of EDGELIST file.
+ * @param s input stream
+ * @param weighted is it weighted?
+ * @param symmetric is it symmetric?
+ * @param fh on header (nodes, edges)
+ * @param fb on body line parallel (u, v, w)
+ * @param fc on body line serial (u, v, w)
+ */
+template <class FH, class FB, class FC>
+inline void readEdgelistDoOmp(istream& s, bool weighted, bool symmetric, FH fh, FB fb, FC fc) {
+  size_t nodes, edges;
+  string line = readEdgelistHeader(s, nodes, edges);
+  fh(nodes, edges);
+  if (nodes==0) return;
+  istringstream sline(line);
+  readMtxBodyDo(sline, weighted, symmetric, fb);
+  if (nodes==size_t(-1)) readMtxBodyDo   (s, weighted, symmetric, fc);
+  else                   readMtxBodyDoOmp(s, weighted, symmetric, fb);
+}
+template <class FH, class FB, class FC>
+inline void readEdgelistDoOmp(const char *pth, bool weighted, bool symmetric, FH fh, FB fb, FC fc) {
+  ifstream s(pth);
+  readEdgelistDoOmp(s, weighted, symmetric, fh, fb, fc);
+}
+#endif
+
+
+
+
+// READ EDGELIFT IF
+// ----------------
+// Read EDGELIFT file as graph if test passes.
+
+/**
+ * Read EDGELIFT file as graph if test passes.
+ * @param a output graph (updated)
+ * @param s input stream
+ * @param weighted is it weighted?
+ * @param symmetric is it symmetric?
+ * @param fv include vertex? (u, d)
+ * @param fe include edge? (u, v, w)
+ */
+template <class G, class FV, class FE>
+inline void readEdgelistIfW(G &a, istream& s, bool weighted, bool symmetric, FV fv, FE fe) {
+  using K = typename G::key_type;
+  using V = typename G::vertex_value_type;
+  using E = typename G::edge_value_type;
+  // Not sure if the vertex-id is 0-based or 1-based, accomodate both.
+  auto fh = [&](auto nodes, auto edges) { if (nodes!=size_t(-1)) { a.respan(nodes+1); addVerticesIfU(a, K(1), K(nodes), V(), fv); } };
+  auto fb = [&](auto u, auto v, auto w) { if (fe(K(u), K(v), K(w))) a.addEdge(K(u), K(v), E(w)); };
+  readEdgelistDo(s, weighted, symmetric, fh, fb);
+  a.update();
+}
+template <class G, class FV, class FE>
+inline void readEdgelistIfW(G &a, const char *pth, bool weighted, bool symmetric, FV fv, FE fe) {
+  ifstream s(pth);
+  readEdgelistIfW(a, s, weighted, symmetric, fv, fe);
+}
+
+
+#ifdef OPENMP
+/**
+ * Read EDGELIST file as graph if test passes.
+ * @param a output graph (updated)
+ * @param s input stream
+ * @param weighted is it weighted?
+ * @param symmetric is it symmetric?
+ * @param fv include vertex? (u, d)
+ * @param fe include edge? (u, v, w)
+ */
+template <class G, class FV, class FE>
+inline void readEdgelistIfOmpW(G &a, istream& s, bool weighted, bool symmetric, FV fv, FE fe) {
+  using K = typename G::key_type;
+  using V = typename G::vertex_value_type;
+  using E = typename G::edge_value_type;
+  // Not sure if the vertex-id is 0-based or 1-based, accomodate both.
+  auto fh = [&](auto nodes, auto edges) { if (nodes!=size_t(-1)) { a.respan(nodes+1); addVerticesIfU(a, K(1), K(nodes), V(), fv); } };
+  auto fb = [&](auto u, auto v, auto w) { if (fe(K(u), K(v), K(w))) addEdgeOmpU(a, K(u), K(v), E(w)); };
+  auto fc = [&](auto u, auto v, auto w) { if (fe(K(u), K(v), K(w))) a.addEdge(K(u), K(v), E(w)); };
+  readEdgelistDoOmp(s, weighted, symmetric, fh, fb, fc);
+  updateOmpU(a);
+}
+template <class G, class FV, class FE>
+inline void readEdgelistIfOmpW(G &a, const char *pth, bool weighted, bool symmetric, FV fv, FE fe) {
+  ifstream s(pth);
+  readEdgelistIfOmpW(a, s, weighted, symmetric, fv, fe);
+}
+#endif
+
+
+
+
+// READ EDGELIST
+// -------------
+// Read EDGELIST file as graph.
+
+/**
+ * Read EDGELIST file as graph.
+ * @param a output graph (updated)
+ * @param s input stream
+ * @param weighted is it weighted?
+ * @param symmetric is it symmetric?
+ */
+template <class G>
+inline void readEdgelistW(G& a, istream& s, bool weighted=false, bool symmetric=false) {
+  auto fv = [](auto u, auto d)         { return true; };
+  auto fe = [](auto u, auto v, auto w) { return true; };
+  readEdgelistIfW(a, s, weighted, symmetric, fv, fe);
+}
+template <class G>
+inline void readEdgelistW(G& a, const char *pth, bool weighted=false, bool symmetric=false) {
+  ifstream s(pth);
+  readEdgelistW(a, s, weighted, symmetric);
+}
+
+
+#ifdef OPENMP
+/**
+ * Read EDGELIST file as graph.
+ * @param a output graph (updated)
+ * @param s input stream
+ * @param weighted is it weighted?
+ * @param symmetric is it symmetric?
+ */
+template <class G>
+inline void readEdgelistOmpW(G& a, istream& s, bool weighted=false, bool symmetric=false) {
+  auto fv = [](auto u, auto d)         { return true; };
+  auto fe = [](auto u, auto v, auto w) { return true; };
+  readEdgelistIfOmpW(a, s, weighted, symmetric, fv, fe);
+}
+template <class G>
+inline void readEdgelistOmpW(G& a, const char *pth, bool weighted=false, bool symmetric=false) {
+  ifstream s(pth);
+  readEdgelistOmpW(a, s, weighted, symmetric);
 }
 #endif
