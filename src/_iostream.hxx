@@ -5,13 +5,21 @@
 #include <iterator>
 #include <array>
 #include <vector>
+#include <string>
+#include <istream>
 #include <ostream>
 #include <iostream>
 #include <chrono>
 
+#ifdef OPENMP
+#include <omp.h>
+#endif
+
 using std::pair;
 using std::array;
 using std::vector;
+using std::string;
+using std::istream;
 using std::ostream;
 using std::is_fundamental;
 using std::iterator_traits;
@@ -21,6 +29,49 @@ using std::localtime;
 using std::chrono::time_point;
 using std::chrono::system_clock;
 using std::cout;
+
+
+
+
+// READ LINES
+// ----------
+
+/**
+ * Read lines from a stream and apply a function to each line.
+ * @param s input stream
+ * @param fp process function (line)
+ */
+template <class FP>
+inline void readLinesDo(istream& s, FP fp) {
+  string line;
+  while (getline(s, line)) {
+    if (line[0]=='#') continue;
+    fp(line);
+  }
+}
+
+
+#ifdef OPENMP
+template <class FP>
+inline void readLinesOmpDo(istream& s, FP fp) {
+  const int LINES = 131072;
+  vector<string> lines(LINES);
+  while (true) {
+    // Read several lines from the stream.
+    int READ = 0;
+    for (int i=0; i<LINES;) {
+      if (!getline(s, lines[i])) break;
+      if (lines[i][0]=='#') continue;
+      ++i; ++READ;
+    }
+    if (READ==0) break;
+    // Process lines using multiple threads.
+    #pragma omp parallel for schedule(dynamic, 1024)
+    for (int i=0; i<READ; ++i)
+      fp(lines[i]);
+  }
+}
+#endif
 
 
 
