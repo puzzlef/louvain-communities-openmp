@@ -70,14 +70,16 @@ int main(int argc, char **argv) {
   using K = uint32_t;
   using V = TYPE;
   install_sigsegv();
-  char *file     = argv[1];
-  bool symmetric = argc>2? stoi(argv[2]) : false;
+  char  *file    = argv[1];
+  size_t span    = argc>2? stoull(argv[2]) : 0;
   bool weighted  = argc>3? stoi(argv[3]) : false;
+  bool symmetric = argc>4? stoi(argv[4]) : false;
   omp_set_num_threads(MAX_THREADS);
   LOG("OMP_NUM_THREADS=%d\n", MAX_THREADS);
   LOG("Loading graph %s ...\n", file);
   DiGraph<K, None, V> x;
-  readMtxOmpW(x, file, weighted); LOG(""); println(x);
+  if (span) x.respan(span);
+  readEdgelistOmpW(x, file, weighted); LOG(""); println(x);
   if (!symmetric) { x = symmetricizeOmp(x); LOG(""); print(x); printf(" (symmetricize)\n"); }
   runExperiment(x);
   printf("\n");

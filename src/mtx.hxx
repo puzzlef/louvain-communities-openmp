@@ -463,23 +463,23 @@ inline void readEdgelistDo(const char *pth, bool weighted, bool symmetric, FH fh
  * @param symmetric is it symmetric?
  * @param fh on header (nodes, edges)
  * @param fb on body line parallel (u, v, w)
- * @param fc on body line serial (u, v, w)
  */
-template <class FH, class FB, class FC>
-inline void readEdgelistDoOmp(istream& s, bool weighted, bool symmetric, FH fh, FB fb, FC fc) {
+template <class FH, class FB>
+inline void readEdgelistDoOmp(istream& s, bool weighted, bool symmetric, FH fh, FB fb) {
   size_t nodes, edges;
   string line = readEdgelistHeader(s, nodes, edges);
   fh(nodes, edges);
   if (nodes==0) return;
   istringstream sline(line);
-  readMtxBodyDo(sline, weighted, symmetric, fb);
-  if (nodes==size_t(-1)) readMtxBodyDo   (s, weighted, symmetric, fc);
-  else                   readMtxBodyDoOmp(s, weighted, symmetric, fb);
+  #pragma omp parallel for schedule(static)
+  for (int i=0; i<1; ++i)
+    readMtxBodyDo(sline, weighted, symmetric, fb);
+  readMtxBodyDoOmp(s, weighted, symmetric, fb);
 }
-template <class FH, class FB, class FC>
-inline void readEdgelistDoOmp(const char *pth, bool weighted, bool symmetric, FH fh, FB fb, FC fc) {
+template <class FH, class FB>
+inline void readEdgelistDoOmp(const char *pth, bool weighted, bool symmetric, FH fh, FB fb) {
   ifstream s(pth);
-  readEdgelistDoOmp(s, weighted, symmetric, fh, fb, fc);
+  readEdgelistDoOmp(s, weighted, symmetric, fh, fb);
 }
 #endif
 
@@ -505,7 +505,8 @@ inline void readEdgelistIfW(G &a, istream& s, bool weighted, bool symmetric, FV 
   using V = typename G::vertex_value_type;
   using E = typename G::edge_value_type;
   // Not sure if the vertex-id is 0-based or 1-based, accomodate both.
-  auto fh = [&](auto nodes, auto edges) { if (nodes!=size_t(-1)) { a.respan(nodes+1); addVerticesIfU(a, K(1), K(nodes), V(), fv); } };
+  // Reserve enough space for the vertices, as there is likely gaps in the vertex-ids.
+  auto fh = [&](auto nodes, auto edges) { if (nodes!=size_t(-1) && nodes>a.span()) a.respan(2*nodes+1); };
   auto fb = [&](auto u, auto v, auto w) { if (fe(K(u), K(v), K(w))) a.addEdge(K(u), K(v), E(w)); };
   readEdgelistDo(s, weighted, symmetric, fh, fb);
   a.update();
@@ -533,10 +534,10 @@ inline void readEdgelistIfOmpW(G &a, istream& s, bool weighted, bool symmetric, 
   using V = typename G::vertex_value_type;
   using E = typename G::edge_value_type;
   // Not sure if the vertex-id is 0-based or 1-based, accomodate both.
-  auto fh = [&](auto nodes, auto edges) { if (nodes!=size_t(-1)) { a.respan(nodes+1); addVerticesIfU(a, K(1), K(nodes), V(), fv); } };
+  // Reserve enough space for the vertices, as there is likely gaps in the vertex-ids.
+  auto fh = [&](auto nodes, auto edges) { if (nodes!=size_t(-1) && nodes>a.span()) a.respan(2*nodes+1); };
   auto fb = [&](auto u, auto v, auto w) { if (fe(K(u), K(v), K(w))) addEdgeOmpU(a, K(u), K(v), E(w)); };
-  auto fc = [&](auto u, auto v, auto w) { if (fe(K(u), K(v), K(w))) a.addEdge(K(u), K(v), E(w)); };
-  readEdgelistDoOmp(s, weighted, symmetric, fh, fb, fc);
+  readEdgelistDoOmp(s, weighted, symmetric, fh, fb);
   updateOmpU(a);
 }
 template <class G, class FV, class FE>
