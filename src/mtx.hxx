@@ -109,25 +109,19 @@ inline size_t readMtxSpan(const char* pth) {
 
 
 
-// READ MTX DO
-// -----------
-// Read contents of MTX file.
+// READ MTX BODY DO
+// ----------------
+// Read body of MTX file.
 
 /**
- * Read contents of MTX file.
+ * Read body of MTX file.
  * @param s input stream
  * @param weighted is it weighted?
- * @param fh on header (symmetric, rows, cols, size)
+ * @param symmetric is graph symmetric?
  * @param fb on body line (u, v, w)
  */
-template <class FH, class FB>
-inline void readMtxDo(istream& s, bool weighted, FH fh, FB fb) {
-  bool symmetric; size_t rows, cols, size;
-  readMtxHeader(s, symmetric, rows, cols, size);
-  fh(symmetric, rows, cols, size);
-  size_t n = max(rows, cols);
-  if (n==0) return;
-  // Process body lines sequentially.
+template <class FB>
+inline void readMtxBodyDo(istream& s, bool weighted, bool symmetric, FB fb) {
   string line;
   while (getline(s, line)) {
     size_t u, v; double w = 1;
@@ -138,29 +132,23 @@ inline void readMtxDo(istream& s, bool weighted, FH fh, FB fb) {
     if (symmetric) fb(v, u, w);
   }
 }
-template <class FH, class FB>
-inline void readMtxDo(const char *pth, bool weighted, FH fh, FB fb) {
+template <class FB>
+inline void readMtxBodyDo(const char *pth, bool weighted, bool symmetric, FB fb) {
   ifstream s(pth);
-  readMtxDo(s, weighted, fh, fb);
+  readMtxBodyDo(s, weighted, symmetric, fb);
 }
 
 
 #ifdef OPENMP
 /**
- * Read contents of MTX file.
+ * Read body of MTX file.
  * @param s input stream
  * @param weighted is it weighted?
- * @param fh on header (symmetric, rows, cols, size)
+ * @param symmetric is graph symmetric?
  * @param fb on body line (u, v, w)
  */
-template <class FH, class FB>
-inline void readMtxDoOmp(istream& s, bool weighted, FH fh, FB fb) {
-  bool symmetric; size_t rows, cols, size;
-  readMtxHeader(s, symmetric, rows, cols, size);
-  fh(symmetric, rows, cols, size);
-  size_t n = max(rows, cols);
-  if (n==0) return;
-  // Process body lines in parallel.
+template <class FB>
+inline void readMtxBodyDoOmp(istream& s, bool weighted, bool symmetric, FB fb) {
   const int THREADS = omp_get_max_threads();
   const int LINES   = 131072;
   const size_t CHUNK_SIZE = 1024;
@@ -191,6 +179,60 @@ inline void readMtxDoOmp(istream& s, bool weighted, FH fh, FB fb) {
       }
     }
   }
+}
+template <class FB>
+inline void readMtxBodyDoOmp(const char *pth, bool weighted, bool symmetric, FB fb) {
+  ifstream s(pth);
+  readMtxBodyDoOmp(s, weighted, symmetric, fb);
+}
+#endif
+
+
+
+
+// READ MTX DO
+// -----------
+// Read contents of MTX file.
+
+/**
+ * Read contents of MTX file.
+ * @param s input stream
+ * @param weighted is it weighted?
+ * @param fh on header (symmetric, rows, cols, size)
+ * @param fb on body line (u, v, w)
+ */
+template <class FH, class FB>
+inline void readMtxDo(istream& s, bool weighted, FH fh, FB fb) {
+  bool symmetric; size_t rows, cols, size;
+  readMtxHeader(s, symmetric, rows, cols, size);
+  fh(symmetric, rows, cols, size);
+  size_t n = max(rows, cols);
+  if (n==0) return;
+  readMtxBodyDo(s, weighted, symmetric, fb);
+}
+template <class FH, class FB>
+inline void readMtxDo(const char *pth, bool weighted, FH fh, FB fb) {
+  ifstream s(pth);
+  readMtxDo(s, weighted, fh, fb);
+}
+
+
+#ifdef OPENMP
+/**
+ * Read contents of MTX file.
+ * @param s input stream
+ * @param weighted is it weighted?
+ * @param fh on header (symmetric, rows, cols, size)
+ * @param fb on body line (u, v, w)
+ */
+template <class FH, class FB>
+inline void readMtxDoOmp(istream& s, bool weighted, FH fh, FB fb) {
+  bool symmetric; size_t rows, cols, size;
+  readMtxHeader(s, symmetric, rows, cols, size);
+  fh(symmetric, rows, cols, size);
+  size_t n = max(rows, cols);
+  if (n==0) return;
+  readMtxBodyDoOmp(s, weighted, symmetric, fb);
 }
 template <class FH, class FB>
 inline void readMtxDoOmp(const char *pth, bool weighted, FH fh, FB fb) {
