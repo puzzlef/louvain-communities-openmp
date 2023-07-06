@@ -24,7 +24,7 @@ DEFINES=(""
 
 # Run
 g++ ${DEFINES[*]} -std=c++17 -O3 -fopenmp main.cxx
-# stdbuf --output=L ./a.out ~/Graphs/TYPES/communities/com-dblp.ungraph.txt       0 0 0 2>&1 | tee -a "$out"
-stdbuf --output=L ./a.out ~/Graphs/TYPES/communities/com-lj.ungraph.txt         0 0 0 2>&1 | tee -a "$out"
-stdbuf --output=L ./a.out ~/Graphs/TYPES/communities/com-orkut.ungraph.txt      0 0 0 2>&1 | tee -a "$out"
-stdbuf --output=L ./a.out ~/Graphs/TYPES/communities/com-friendster.ungraph.txt 0 0 0 2>&1 | tee -a "$out"
+stdbuf --output=L ./a.out ~/Graphs/TYPES/communities/com-dblp.ungraph.txt       0 0 0 ~/Graphs/TYPES/communities/com-dblp.all.cmty.txt       2>&1 | tee -a "$out"
+stdbuf --output=L ./a.out ~/Graphs/TYPES/communities/com-lj.ungraph.txt         0 0 0 ~/Graphs/TYPES/communities/com-lj.all.cmty.txt         2>&1 | tee -a "$out"
+stdbuf --output=L ./a.out ~/Graphs/TYPES/communities/com-orkut.ungraph.txt      0 0 0 ~/Graphs/TYPES/communities/com-orkut.all.cmty.txt      2>&1 | tee -a "$out"
+stdbuf --output=L ./a.out ~/Graphs/TYPES/communities/com-friendster.ungraph.txt 0 0 0 ~/Graphs/TYPES/communities/com-friendster.all.cmty.txt 2>&1 | tee -a "$out"

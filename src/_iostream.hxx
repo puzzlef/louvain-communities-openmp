@@ -39,14 +39,14 @@ using std::cout;
 /**
  * Read lines from a stream and apply a function to each line.
  * @param s input stream
- * @param fp process function (line)
+ * @param fp process function (line_index, line)
  */
 template <class FP>
 inline void readLinesDo(istream& s, FP fp) {
   string line;
-  while (getline(s, line)) {
+  for (size_t l=0; getline(s, line);) {
     if (line[0]=='#') continue;
-    fp(line);
+    fp(l++, line);
   }
 }
 
@@ -56,7 +56,7 @@ template <class FP>
 inline void readLinesOmpDo(istream& s, FP fp) {
   const int LINES = 131072;
   vector<string> lines(LINES);
-  while (true) {
+  for (size_t l=0;;) {
     // Read several lines from the stream.
     int READ = 0;
     for (int i=0; i<LINES;) {
@@ -68,7 +68,8 @@ inline void readLinesOmpDo(istream& s, FP fp) {
     // Process lines using multiple threads.
     #pragma omp parallel for schedule(dynamic, 1024)
     for (int i=0; i<READ; ++i)
-      fp(lines[i]);
+      fp(l+i, lines[i]);
+    l += READ;
   }
 }
 #endif
