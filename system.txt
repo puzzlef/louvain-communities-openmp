@@ -1,9 +1,9 @@
-Dell PowerEdge R740 Rack Mount Chassis
-Proc:  Intel(R) Xeon(R) Silver 4116 CPU @ 2.10GHz (12 cores x 2)
-Cache: L1d+i: 768KB, L2: 12MB, L3: 16MB (shared), NUMA: 2
-Mem:   128GB DIMM DDR4 Synchronous Registered (Buffered) 2666 MHz (8x16GB)
-Disk:  MegaRAID SAS-3 3108 [Invader]; 10TB PERC H730P Adp
-Net:   Broadcom NetXtreme BCM5720 2-port Gigabit Ethernet PCIe
-Disp:  Integrated Matrox G200eW3 Graphics Controller VGA (66MHz)
-Disp:  NVIDIA Corporation GV100GL [Tesla V100 PCIe 16GB] (rev a1)
-OS:    Windows, CentOS Linux release 7.9.2009 (Core)
+Dell PowerEdge R740xd Rack Mount Chassis
+Proc:  Intel(R) Xeon(R) Gold 6226R CPU @ 2.90GHz (16 cores x 2)
+Cache: L1d+i: 1MB, L2: 16MB, L3: 22MB (shared), NUMA: 2
+Mem:   376GB System memory
+Disk:  MegaRAID SAS-3 3108 [Invader]
+Net:   Broadcom NetXtreme-E BCM5720 2-port 10G Gigabit Ethernet PCIe
+Infib: Mellanox Technologies MT27800 Family [ConnectX-5]
+Disp:  Integrated Matrox G200eW3 Graphics Controller VGA
+OS:    CentOS Stream 8 Linux kernel 4.18.0 (RHEL)
