@@ -1,13 +1,14 @@
 #pragma once
-#include <cstdint>
 #include <utility>
-#include <algorithm>
 #include <vector>
-#include "_ctypes.hxx"
+#include <algorithm>
+#include <cstdint>
 #include "_algorithm.hxx"
+#include "_ctypes.hxx"
 
 using std::pair;
 using std::vector;
+using std::sort;
 using std::lower_bound;
 
 
@@ -231,7 +232,7 @@ class LazyBitset {
     auto  ib = pairs.begin();
     auto  ie = pairs.end();
     auto  im = ib + n;
-    sort_values(im, ie, fl);
+    sort(im, ie, fl);
     auto  it = set_difference_inplace(ib, im, im, ie, fl, fe);
     pairs.resize(it - ib);
     unprocessed = 0;
@@ -254,7 +255,7 @@ class LazyBitset {
     auto ib = pairs.begin();
     auto im = ib + n;
     auto ie = ib + N;
-    sort_values(im, ie, fl);
+    sort(im, ie, fl);
     auto it = set_union_last_inplace(ib, im, im, ie, bb, be, fl, fe);
     pairs.resize(it - ib);
     unprocessed = 0;
