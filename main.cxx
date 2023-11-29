@@ -7,7 +7,7 @@
 #include <string>
 #include <iostream>
 #include <algorithm>
-#include "src/main.hxx"
+#include "inc/main.hxx"
 
 #ifdef OPENMP
 #include <omp.h>
