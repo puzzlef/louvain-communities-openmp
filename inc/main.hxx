@@ -10,6 +10,5 @@
 #include "selfLoop.hxx"
 #include "properties.hxx"
 #include "csr.hxx"
-#include "modularity.hxx"
-#include "random.hxx"
+#include "batch.hxx"
 #include "louvain.hxx"
