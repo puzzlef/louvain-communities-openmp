@@ -5,7 +5,7 @@ const path = require('path');
 const ROMPTH = /^OMP_NUM_THREADS=(\d+)/;
 const RGRAPH = /^Loading graph .*\/(.*?)\.mtx \.\.\./m;
 const RORDER = /^order: (\d+) size: (\d+) (?:\[\w+\] )?\{\}/m;
-const RRESLT = /^\{(.+?) threads\} -> \{(.+?)ms, (.+?)ms preproc, (.+?)ms firstpass, (.+?)ms locmove, (.+?)ms aggr, (.+?) affected, (.+?) iters, (.+?) passes, (.+?) modularity\} (.+)/m;
+const RRESLT = /^\{(.+?) threads\} -> \{(.+?)ms, (.+?)ms mark, (.+?) init, (.+?)ms first, (.+?)ms move, (.+?)ms aggr, (.+?) iters, (.+?) modularity\} (.+)/m;
 
 
 
@@ -60,17 +60,16 @@ function readLogLine(ln, data, state) {
     state.size  = parseFloat(size);
   }
   else if (RRESLT.test(ln)) {
-    var [, num_threads, time, preprocessing_time, first_pass_time, local_moving_phase_time, aggregation_phase_time, affected_vertices, iterations, passes, modularity, technique] = RRESLT.exec(ln);
+    var [, num_threads, time, marking_time, initialization_time, first_pass_time, local_moving_phase_time, aggregation_phase_time, iterations, modularity, technique] = RRESLT.exec(ln);
     data.get(state.graph).push(Object.assign({}, state, {
-      num_threads: parseFloat(num_threads),
-      time:        parseFloat(time),
-      preprocessing_time: parseFloat(preprocessing_time),
-      first_pass_time:    parseFloat(first_pass_time),
+      num_threads:  parseFloat(num_threads),
+      time:         parseFloat(time),
+      marking_time: parseFloat(marking_time),
+      initialization_time: parseFloat(initialization_time),
+      first_pass_time:     parseFloat(first_pass_time),
       local_moving_phase_time: parseFloat(local_moving_phase_time),
       aggregation_phase_time:  parseFloat(aggregation_phase_time),
-      affected_vertices: parseFloat(affected_vertices),
       iterations:  parseFloat(iterations),
-      passes:      parseFloat(passes),
       modularity:  parseFloat(modularity),
       technique,
     }));
