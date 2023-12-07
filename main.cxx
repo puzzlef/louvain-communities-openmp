@@ -69,10 +69,10 @@ void runExperiment(const G& x) {
   auto flog = [&](const auto& ans, const char *technique) {
     printf(
       "{%03d threads} -> "
-      "{%09.1fms, %09.1fms mark, %09.1fms init, %09.1fms first, %09.1fms move, %09.1fms aggr, %04d iters, %01.9f modularity} %s\n",
+      "{%09.1fms, %09.1fms mark, %09.1fms init, %09.1fms first, %09.1fms move, %09.1fms aggr, %04d iters, %04d passes, %01.9f modularity} %s\n",
       MAX_THREADS,
       ans.time, ans.markingTime, ans.initializationTime, ans.firstPassTime, ans.localMoveTime, ans.aggregationTime,
-      ans.iterations, getModularity(x, ans, M), technique
+      ans.iterations, ans.passes, getModularity(x, ans, M), technique
     );
   };
   // Find static Louvain.
