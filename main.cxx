@@ -66,18 +66,21 @@ void runExperiment(const G& x) {
   vector<K> *init = nullptr;
   double M = edgeWeightOmp(x)/2;
   // Follow a specific result logging format, which can be easily parsed later.
-  auto flog = [&](const auto& ans, const char *technique) {
+  auto flog = [&](const auto& ans, const char *technique, int threads) {
     printf(
       "{%03d threads} -> "
       "{%09.1fms, %09.1fms mark, %09.1fms init, %09.1fms first, %09.1fms move, %09.1fms aggr, %04d iters, %04d passes, %01.9f modularity} %s\n",
-      MAX_THREADS,
+      threads,
       ans.time, ans.markingTime, ans.initializationTime, ans.firstPassTime, ans.localMoveTime, ans.aggregationTime,
       ans.iterations, ans.passes, getModularity(x, ans, M), technique
     );
   };
   // Find static Louvain.
-  auto b1 = louvainStaticOmp(x, {repeat});
-  flog(b1, "louvainStaticOmp");
+  for (int t=1; t<=MAX_THREADS; t*=2) {
+    omp_set_num_threads(t);
+    auto b1 = louvainStaticOmp(x, {repeat});
+    flog(b1, "louvainStaticOmp", t);
+  }
 }
 
 
