@@ -1,8 +1,6 @@
 #include <cstdint>
 #include <cstdio>
 #include <utility>
-#include <random>
-#include <iterator>
 #include <vector>
 #include <string>
 #include <iostream>
@@ -61,23 +59,43 @@ template <class G>
 void runExperiment(const G& x) {
   using K = typename G::key_type;
   using V = typename G::edge_value_type;
-  int repeat  = REPEAT_METHOD;
-  int retries = 5;
-  vector<K> *init = nullptr;
-  double M = edgeWeightOmp(x)/2;
+  int repeat = REPEAT_METHOD;
+  double   M = edgeWeightOmp(x)/2;
   // Follow a specific result logging format, which can be easily parsed later.
   auto flog = [&](const auto& ans, const char *technique) {
     printf(
-      "{%03d threads} -> "
-      "{%09.1fms, %09.1fms mark, %09.1fms init, %09.1fms first, %09.1fms move, %09.1fms aggr, %04d iters, %04d passes, %01.9f modularity} %s\n",
-      MAX_THREADS,
-      ans.time, ans.markingTime, ans.initializationTime, ans.firstPassTime, ans.localMoveTime, ans.aggregationTime,
-      ans.iterations, ans.passes, getModularity(x, ans, M), technique
+      "{%09.1fms, %09.1fms mark, %09.1fms init, %09.1fms firstpass, %09.1fms locmove, %09.1fms aggr, %09.1fms split, %.3e aff, %04d iters, %03d passes, %01.9f modularity, %zu/%zu disconnected} %s\n",
+      ans.time, ans.markingTime, ans.initializationTime, ans.firstPassTime, ans.localMoveTime, ans.aggregationTime, ans.splittingTime,
+      double(ans.affectedVertices), ans.iterations, ans.passes, getModularity(x, ans, M),
+      countValue(communitiesDisconnectedOmp(x, ans.membership), char(1)),
+      communities(x, ans.membership).size(), technique
     );
   };
-  // Find static Louvain.
-  auto b1 = louvainStaticOmp(x, {repeat});
-  flog(b1, "louvainStaticOmp");
+  // Get community memberships on original graph (static).
+  {
+    auto a0 = louvainStaticOmp(x, {repeat});
+    flog(a0, "louvainStaticOmp");
+  }
+  {
+    auto a1 = louvainSplitLastStaticOmp<1>(x, {repeat});
+    flog(a1, "louvainSplitLastStaticOmp1");
+    auto a2 = louvainSplitLastStaticOmp<2>(x, {repeat});
+    flog(a2, "louvainSplitLastStaticOmp2");
+    // auto a3 = louvainSplitLastStaticOmp<3>(x, {repeat});
+    // flog(a3, "louvainSplitLastStaticOmp3");
+    auto a4 = louvainSplitLastStaticOmp<4>(x, {repeat});
+    flog(a4, "louvainSplitLastStaticOmp4");
+  }
+  {
+    auto a5 = louvainSplitIterationStaticOmp<1>(x, {repeat});
+    flog(a5, "louvainSplitIterationStaticOmp1");
+    auto a6 = louvainSplitIterationStaticOmp<2>(x, {repeat});
+    flog(a6, "louvainSplitIterationStaticOmp2");
+    // auto a7 = louvainSplitIterationStaticOmp<3>(x, {repeat});
+    // flog(a7, "louvainSplitIterationStaticOmp3");
+    auto a8 = louvainSplitIterationStaticOmp<4>(x, {repeat});
+    flog(a8, "louvainSplitIterationStaticOmp4");
+  }
 }
 
 
