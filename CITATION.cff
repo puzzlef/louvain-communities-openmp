@@ -5,6 +5,6 @@ authors:
     given-names: Subhajit
     orcid: https://orcid.org/0000-0001-5140-6578
 title: "puzzlef/louvain-communities-openmp: Design of OpenMP-based Louvain algorithm for community detection"
-version: 2.0.0
-doi: 10.5281/zenodo.10403705
-date-released: 2023-12-19
+version: 3.0.0
+doi: 10.5281/zenodo.10684651
+date-released: 2024-02-20
