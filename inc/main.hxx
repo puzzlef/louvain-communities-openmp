@@ -9,6 +9,7 @@
 #include "symmetricize.hxx"
 #include "selfLoop.hxx"
 #include "properties.hxx"
+#include "split.hxx"
 #include "csr.hxx"
 #include "batch.hxx"
 #include "louvain.hxx"
