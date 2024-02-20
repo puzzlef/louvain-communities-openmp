@@ -13,3 +13,4 @@
 #include "csr.hxx"
 #include "batch.hxx"
 #include "louvain.hxx"
+#include "louvainSplit.hxx"
