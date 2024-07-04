@@ -2,17 +2,17 @@ Multi-threaded OpenMP-based [Louvain] algorithm for [community detection].
 
 Recent advancements in data collection and graph representations have led to unprecedented levels of complexity, demanding efficient parallel algorithms for community detection on large networks. The use of multicore/shared memory setups is crucial for energy efficiency and compatibility with extensive DRAM sizes. However, existing community detection algorithms face challenges in parallelization due to their irregular and inherently sequential nature. While studies on the Louvain algorithm propose optimizations and parallelization techniques, they often neglect the aggregation phase, creating a bottleneck even after optimizing the local-moving phase. Additionally, these optimization techniques are scattered across multiple papers, making it challenging for readers to grasp and implement them effectively. To address this, we introduce **GVE-Louvain**, an optimized *parallel implementation of Louvain* for shared memory multicores.
 
-Below we plot the time taken by [Vite] (Louvain), [Grappolo] (Louvain), [NetworKit] Louvain, and GVE-Louvain on 13 different graphs. GVE-Louvain surpasses Vite, Grappolo, and NetworKit by `50×`, `22×`, and `20×` respectively, achieving a processing rate of `560𝑀` edges/s on a `3.8𝐵` edge graph.
+Below we plot the time taken by [Vite] (Louvain), [Grappolo] (Louvain), [NetworKit] Louvain, [cuGraph] Louvain, and GVE-Louvain on 13 different graphs. GVE-Louvain surpasses Vite, Grappolo, NetworKit Louvain, and cuGraph Louvain by `50×`, `22×`, `20×`, and `5.8x` respectively, achieving a processing rate of `560𝑀` edges/s on a `3.8𝐵` edge graph.
 
-[![](https://i.imgur.com/nVvNACt.png)][sheets-o1]
+[![](https://i.imgur.com/qLNfXLp.png)][sheets-o1]
 
-Below we plot the speedup of GVE-Louvain wrt Vite, Grappolo, and NetworKit.
+Below we plot the speedup of GVE-Louvain wrt Vite, Grappolo, NetworKit Louvain, and cuGraph Louvain.
 
-[![](https://i.imgur.com/6KzkyY8.png)][sheets-o1]
+[![](https://i.imgur.com/aSy94lN.png)][sheets-o1]
 
-Next, we plot the modularity of communities identified by Vite, Grappolo, NetworKit, and GVE-Louvain. GVE-Louvain on average obtains `3.1%` higher modularity than Vite (especially on web graphs), and `0.6%` lower modularity than Grappolo and NetworKit (especially on social networks with poor clustering).
+Next, we plot the modularity of communities identified by Vite, Grappolo, NetworKit, and GVE-Louvain. GVE-Louvain on average obtains `3.1%` higher modularity than Vite (especially on web graphs), `0.6%` lower modularity than Grappolo and NetworKit (especially on social networks with poor clustering), and `2.6%` higher modularity than cuGraph Louvain (primarily because cuGraph Leiden failed to run on graphs that are well-clusterable).
 
-[![](https://i.imgur.com/8KqgWBi.png)][sheets-o1]
+[![](https://i.imgur.com/4WsjQkF.png)][sheets-o1]
 
 Finally, we plot the strong scaling behaviour of GVE-Louvain. With doubling of threads, GVE-Louvain exhibits an average performance scaling of `1.6×`.
 
@@ -36,6 +36,7 @@ Refer to our technical report for more details: \
 [Vite]: https://github.com/ECP-ExaGraph/vite
 [Grappolo]: https://github.com/ECP-ExaGraph/grappolo
 [NetworKit]: https://github.com/networkit/networkit
+[cuGraph]: https://github.com/rapidsai/cugraph
 
 <br>
 <br>
